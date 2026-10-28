@@ -7,7 +7,10 @@ const path = require('node:path');
 function readToken(file) {
   try {
     const { token } = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (token) return token;
+    if (token) {
+      fs.chmodSync(file, 0o600); // Older versions wrote it world-readable.
+      return token;
+    }
   } catch {
     // Missing or unreadable: make a new one.
   }
@@ -17,7 +20,9 @@ function readToken(file) {
 function resetToken(file) {
   const token = crypto.randomBytes(24).toString('base64url');
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify({ token }));
+  // Owner-only, like musickit.json. writeFileSync only applies the mode to new files, so fix up existing ones too.
+  fs.writeFileSync(file, JSON.stringify({ token }), { mode: 0o600 });
+  fs.chmodSync(file, 0o600);
   return token;
 }
 

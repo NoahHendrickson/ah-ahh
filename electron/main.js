@@ -1,4 +1,4 @@
-const { app, BrowserWindow, components, dialog, ipcMain, nativeTheme, shell } = require('electron');
+const { app, BrowserWindow, components, dialog, ipcMain, nativeTheme, session, shell } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -49,6 +49,39 @@ function isAppUrl(url) {
   return url.startsWith(ORIGIN) || (DEV_URL && url.startsWith(DEV_URL));
 }
 
+/** Apple's sign-in moves between apple.com hosts (idmsa, appleid, authorize.music…), so its popup may too. */
+function isAppleUrl(url) {
+  return url.startsWith('https://') && /(^|\.)apple\.com$/.test(hostOf(url));
+}
+
+// Every window, including Apple's sign-in popup, gets the same rules: only sign-in opens as a popup,
+// other web links open in the real browser, and nothing navigates away from the app (or, in the popup, from Apple).
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    if (SIGN_IN_HOSTS.has(hostOf(url))) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 520,
+          height: 720,
+          autoHideMenuBar: true,
+          backgroundColor: '#ffffff',
+          titleBarStyle: 'default',
+          titleBarOverlay: false,
+        },
+      };
+    }
+    if (/^https?:/.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  contents.on('will-navigate', (event, url) => {
+    if (isAppUrl(url) || (isAppleUrl(url) && !isAppUrl(contents.getURL()))) return;
+    event.preventDefault();
+    if (/^https?:/.test(url)) shell.openExternal(url);
+  });
+});
+
 /** Turns the frosted-glass window background on/off (the page's CSS supplies the tint on top). */
 function applyGlass(window, enabled) {
   if (process.platform === 'darwin') window.setVibrancy(enabled ? 'under-window' : null);
@@ -83,30 +116,6 @@ function createWindow() {
       sandbox: true,
       autoplayPolicy: 'no-user-gesture-required',
     },
-  });
-
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (SIGN_IN_HOSTS.has(hostOf(url))) {
-      return {
-        action: 'allow',
-        overrideBrowserWindowOptions: {
-          width: 520,
-          height: 720,
-          autoHideMenuBar: true,
-          backgroundColor: '#ffffff',
-          titleBarStyle: 'default',
-          titleBarOverlay: false,
-        },
-      };
-    }
-    if (/^https?:/.test(url)) shell.openExternal(url);
-    return { action: 'deny' };
-  });
-
-  win.webContents.on('will-navigate', (event, url) => {
-    if (isAppUrl(url)) return;
-    event.preventDefault();
-    if (/^https?:/.test(url)) shell.openExternal(url);
   });
 
   if (canGlass && prefs.get().glass) applyGlass(win, true);
@@ -267,6 +276,9 @@ app.on('second-instance', () => {
 app.on('window-all-closed', () => app.quit());
 
 app.whenReady().then(async () => {
+  // Nothing needs the camera, mic, location, notifications etc. DRM playback and Settings' copy buttons still need theirs.
+  const allowed = new Set(['mediaKeySystem', 'clipboard-sanitized-write']);
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => callback(allowed.has(permission)));
   // Unpackaged runs (npm start) would otherwise show Electron's icon in the Dock.
   app.dock?.setIcon(path.join(__dirname, 'icon.png'));
 

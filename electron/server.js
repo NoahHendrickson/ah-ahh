@@ -13,13 +13,22 @@ const MIME = {
   '.woff2': 'font/woff2',
 };
 
-function sendFile(res, file) {
+/**
+ * For the app's pages: scripts only from here and Apple's MusicKit CDN. Media, images, fonts and API calls come
+ * from many Apple hosts and blob: URLs, so nothing else is restricted. Workers would otherwise fall back to
+ * script-src, which would block blob: workers (HLS playback can use them).
+ */
+const APP_CSP = {
+  'content-security-policy': "script-src 'self' https://js-cdn.music.apple.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'",
+};
+
+function sendFile(res, file, headers) {
   fs.readFile(file, (err, body) => {
     if (err) {
       res.writeHead(404).end('Not found');
       return;
     }
-    res.writeHead(200, { 'content-type': MIME[path.extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-cache' });
+    res.writeHead(200, { 'content-type': MIME[path.extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-cache', ...headers });
     res.end(body);
   });
 }
@@ -60,10 +69,19 @@ function startServer({ port, rendererDir, overlayFile }) {
     }
 
     // Static app files, falling back to index.html.
-    const relative = path.normalize(decodeURIComponent(pathname)).replace(/^[/\\]+/, '');
+    let relative;
+    try {
+      relative = path.normalize(decodeURIComponent(pathname)).replace(/^[/\\]+/, '');
+    } catch {
+      // Malformed percent-encoding such as "/%zz".
+      return res.writeHead(400).end();
+    }
     const file = path.join(rendererDir, relative);
     if (!file.startsWith(rendererDir)) return res.writeHead(403).end();
-    fs.stat(file, (err, stat) => sendFile(res, !err && stat.isFile() ? file : path.join(rendererDir, 'index.html')));
+    fs.stat(file, (err, stat) => {
+      const target = !err && stat.isFile() ? file : path.join(rendererDir, 'index.html');
+      sendFile(res, target, path.extname(target) === '.html' ? APP_CSP : undefined);
+    });
   });
 
   // Keep idle SSE connections (OBS browser sources) from being dropped.
