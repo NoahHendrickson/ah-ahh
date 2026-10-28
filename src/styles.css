@@ -1291,10 +1291,16 @@ button {
   height: 10px;
 }
 
+/* Thumbs stay hidden until their element is scrolling (see main.tsx) or hovered. */
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: transparent;
   border-radius: 5px;
   border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.scrolling::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
   background-clip: content-box;
 }
 
