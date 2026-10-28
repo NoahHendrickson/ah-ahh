@@ -20,7 +20,7 @@
     "electronDownload": {
       "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
     },
-    "afterPack": "scripts/vmp-sign.js",
+    "afterSign": "scripts/vmp-sign.js",
     "files": [
       "electron/**",
       "dist/renderer/**",
