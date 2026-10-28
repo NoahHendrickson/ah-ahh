@@ -56,7 +56,7 @@ export function PlayerBar({ queueOpen, onToggleQueue }: { queueOpen: boolean; on
       </div>
 
       <div className="player-side">
-        <button className={`icon-btn ${queueOpen ? 'active' : ''}`} title="Up Next" onClick={onToggleQueue}>
+        <button className={`icon-btn ${queueOpen ? 'active' : ''}`} title="Queue" onClick={onToggleQueue}>
           <Queue />
         </button>
         <VolumeControl />

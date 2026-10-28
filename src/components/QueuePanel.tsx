@@ -43,8 +43,8 @@ export function QueuePanel({ open }: { open: boolean }) {
   });
 
   /**
-   * Press and move a row to lift it: it follows the pointer while the rows it passes slide out of
-   * the way, and the panel scrolls when held near its top or bottom edge. Release to drop it there.
+   * Press and hold (or move) a row to lift it: it follows the pointer while the rows it passes slide
+   * out of the way, and the panel scrolls when held near its top or bottom edge. Release to drop it.
    * A queue change mid-drag (a song ends, the phone edits it) puts the row back, since `from`, `to`
    * and `start` would no longer point at the same songs.
    */
@@ -58,6 +58,7 @@ export function QueuePanel({ open }: { open: boolean }) {
     let dy = 0;
     let to = from;
     let frame = 0;
+    let hold = 0;
     // Keeps the release coming here even if the pointer leaves the row or the window first.
     row.setPointerCapture(e.pointerId);
 
@@ -71,11 +72,17 @@ export function QueuePanel({ open }: { open: boolean }) {
       if (next !== to) setDrag({ from, to: (to = next) });
       frame = requestAnimationFrame(tick);
     };
-    const move = (ev: PointerEvent) => {
-      y = ev.clientY;
-      if (frame || Math.abs(y - e.clientY) < 4) return;
+    const lift = () => {
+      if (frame) return;
+      clearTimeout(hold);
       setDrag({ from, to });
       tick();
+    };
+    // A short hold lifts it in place; a quick click or double-click never does.
+    hold = window.setTimeout(lift, 150);
+    const move = (ev: PointerEvent) => {
+      y = ev.clientY;
+      if (Math.abs(y - e.clientY) >= 4) lift();
     };
     const listen = (on: boolean) => {
       const method = on ? 'addEventListener' : 'removeEventListener';
@@ -88,6 +95,7 @@ export function QueuePanel({ open }: { open: boolean }) {
     };
     const cancel = () => {
       listen(false);
+      clearTimeout(hold);
       cancelAnimationFrame(frame);
       if (!frame) return;
       row.style.removeProperty('--dy');
@@ -95,6 +103,7 @@ export function QueuePanel({ open }: { open: boolean }) {
     };
     const drop = () => {
       listen(false);
+      clearTimeout(hold);
       cancelAnimationFrame(frame);
       if (!frame) return;
       // Commit the move with transitions off so the other rows don't slide twice, then ease
@@ -122,9 +131,8 @@ export function QueuePanel({ open }: { open: boolean }) {
   return (
     <aside className={`queue ${open ? 'open' : ''}`} inert={!open} aria-hidden={!open}>
       <div className="queue-inner">
-        <h3>Now Playing</h3>
         {item ? <NowPlayingCard key={item.id} item={item} playing={isPlaying} /> : <p className="muted">Nothing playing</p>}
-        <h3 className="up-next">Up Next</h3>
+        <h3>Queue</h3>
         {upcoming.length === 0 && <p className="muted">Your queue is empty.</p>}
         <div className={`queue-list ${drag ? 'reordering' : ''}`}>
           {upcoming.map((entry, i) => (
@@ -149,6 +157,7 @@ export function QueuePanel({ open }: { open: boolean }) {
 
 function NowPlayingCard({ item, playing }: { item: MediaItem; playing: boolean }) {
   const art = itemArtwork(item, 192);
+  const mesh = useArtMesh(itemArtwork(item, 24));
   const song = songRef(item);
   // Set by the add-to-playlist menu: what happened, shown briefly under the buttons.
   const [notice, setNotice] = useState('');
@@ -161,6 +170,11 @@ function NowPlayingCard({ item, playing }: { item: MediaItem; playing: boolean }
 
   return (
     <div className="now-card">
+      {mesh && (
+        <div className="now-card-bg" aria-hidden>
+          <div className={`now-card-mesh ${playing ? '' : 'paused'}`} style={{ background: mesh }} />
+        </div>
+      )}
       <div className="now-card-main">
         <div className="artwork" style={{ width: 96, height: 96 }}>
           {art && <img src={art} alt="" draggable={false} />}
@@ -184,6 +198,65 @@ function NowPlayingCard({ item, playing }: { item: MediaItem; playing: boolean }
       {notice && <p className="now-card-notice muted small">{notice}</p>}
     </div>
   );
+}
+
+/** Mesh backgrounds already worked out, by artwork URL, so coming back to a song paints at once. */
+const meshes = new Map<string, string | null>();
+
+/** The card's background in the artwork's colours, once the (tiny) artwork has loaded. */
+function useArtMesh(url: string | undefined): string | undefined {
+  const [mesh, setMesh] = useState(() => (url ? meshes.get(url) : undefined));
+
+  useEffect(() => {
+    if (!url || meshes.has(url)) return;
+    let live = true;
+    const img = new Image();
+    // Apple's artwork CDN allows this, so the pixels can be read back.
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      let value: string | null = null;
+      try {
+        value = meshFrom(img);
+      } catch {
+        // Artwork from a host without CORS: keep the plain card.
+      }
+      meshes.set(url, value);
+      if (live) setMesh(value);
+    };
+    img.src = url;
+    return () => {
+      live = false;
+    };
+  }, [url]);
+
+  return mesh ?? undefined;
+}
+
+/** Shrinks the art to 3×3 pixels: its corners glow from the card's corners over its centre colour. */
+function meshFrom(img: HTMLImageElement): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 3;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, 3, 3);
+  const px = ctx.getImageData(0, 0, 3, 3).data;
+  const color = (i: number) => tone(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]);
+  return [
+    `radial-gradient(at 30% 30%, ${color(0)}, transparent 50%)`,
+    `radial-gradient(at 70% 30%, ${color(2)}, transparent 50%)`,
+    `radial-gradient(at 30% 70%, ${color(6)}, transparent 50%)`,
+    `radial-gradient(at 70% 70%, ${color(8)}, transparent 50%)`,
+    color(4),
+  ].join(', ');
+}
+
+/** More saturated than the art, and never bright enough to wash out the white text on top. */
+function tone(r: number, g: number, b: number): string {
+  const grey = (r + g + b) / 3;
+  const rgb = [r, g, b].map((v) => Math.min(255, Math.max(0, grey + (v - grey) * 1.4)));
+  const luma = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+  const k = Math.min(1, 0.34 / luma);
+  return `rgb(${rgb.map((v) => Math.round(v * k)).join(' ')})`;
 }
 
 function FavoriteButton({ song }: { song: SongRef }) {
@@ -326,7 +399,7 @@ function QueueRow({ title, artist, art, order = 0, lifted, shift, onClick, onRem
       </div>
       <button
         className="icon-btn queue-remove"
-        title="Remove from Up Next"
+        title="Remove from Queue"
         onClick={onRemove}
         onDoubleClick={(e) => e.stopPropagation()}
       >
