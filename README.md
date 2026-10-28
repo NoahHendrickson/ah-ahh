@@ -134,13 +134,22 @@ a real web origin. The port is fixed because Apple Music keeps your sign-in per 
 
 ## iPhone remote
 
-The phone app lives in `ios/` (SwiftUI, no dependencies, iOS 17+). To install it on your iPhone:
+The phone app lives in `ios/` (SwiftUI, no dependencies, iOS 17+) and is installed through
+**TestFlight**: get the TestFlight app on the iPhone, accept the invite, and tap **Install**.
+TestFlight then keeps it updated.
 
-1. Open `ios/AhAhhRemote.xcodeproj` in Xcode. If Xcode offers to install extra components, let it.
-2. **Xcode → Settings → Accounts**: sign in with the Apple ID for team `4WDT6B6JDX`.
-3. Plug in the iPhone and trust the Mac. On the phone, turn on **Settings → Privacy & Security
-   → Developer Mode** and restart when it asks.
-4. Pick the iPhone as the run destination and press **Run** (⌘R).
-5. On the PC, turn on **Settings → Phone remote**, then scan the code with the app (or the
-   Camera app). When iOS asks to find devices on your local network, tap **Allow**. If you
-   tapped Don't Allow, turn it back on in **Settings → ah ahh → Local Network**.
+To publish a new build:
+
+```sh
+npm run release:ios   # archive, sign, and upload to TestFlight (see scripts/release-ios.sh)
+```
+
+This needs an App Store Connect API key (App Manager role) at
+`~/.appstoreconnect/private_keys/AuthKey_<KEY ID>.p8`, its Issuer ID in
+`~/.appstoreconnect/issuer_id`, and the "Apple Distribution" certificate in the login keychain
+with the "ah ahh Remote App Store" provisioning profile installed. TestFlight builds expire after
+90 days, so publish at least that often.
+
+To pair, turn on **Settings → Phone remote** on the PC, then scan the code with the app (or the
+Camera app). When iOS asks to find devices on your local network, tap **Allow**. If you tapped
+Don't Allow, turn it back on in **Settings → ah ahh → Local Network**.

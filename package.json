@@ -11,7 +11,8 @@
     "build": "tsc --noEmit && vite build",
     "vmp:sign-dev": "python3 -m castlabs_evs.vmp sign-pkg node_modules/electron/dist",
     "dist:win": "npm run build && electron-builder --win --x64 --publish never",
-    "release:win": "npm run dist:win && gh release create v$npm_package_version release/ah-ahh-Setup-$npm_package_version.exe release/ah-ahh-Setup-$npm_package_version.exe.blockmap release/latest.yml --title \"ah ahh $npm_package_version\" --generate-notes"
+    "release:win": "npm run dist:win && gh release create v$npm_package_version release/ah-ahh-Setup-$npm_package_version.exe release/ah-ahh-Setup-$npm_package_version.exe.blockmap release/latest.yml --title \"ah ahh $npm_package_version\" --generate-notes",
+    "release:ios": "sh scripts/release-ios.sh"
   },
   "build": {
     "appId": "dev.noey.ahahh",
