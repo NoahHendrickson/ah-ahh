@@ -94,7 +94,6 @@ h3 {
 
 a {
   color: var(--accent);
-  cursor: pointer;
 }
 
 code {
@@ -327,7 +326,6 @@ button:disabled {
   background: none;
   color: var(--text-2);
   text-align: left;
-  cursor: pointer;
 }
 
 .nav-item span {
@@ -379,7 +377,6 @@ button:disabled {
   color: var(--text);
   font-weight: 600;
   text-decoration: none;
-  cursor: pointer;
   transition: background 120ms;
 }
 
@@ -413,7 +410,6 @@ button:disabled {
 
 .btn:disabled {
   opacity: 0.45;
-  cursor: default;
 }
 
 .icon-btn {
@@ -426,7 +422,6 @@ button:disabled {
   border-radius: 50%;
   background: none;
   color: var(--text-2);
-  cursor: pointer;
 }
 
 .icon-btn:hover:not(:disabled) {
@@ -459,7 +454,6 @@ button:disabled {
 
 .icon-btn:disabled {
   opacity: 0.35;
-  cursor: default;
 }
 
 .actions {
@@ -567,7 +561,6 @@ button:disabled {
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 140ms, transform 140ms;
-  cursor: pointer;
 }
 
 .card:hover .card-play {
@@ -726,7 +719,6 @@ button:disabled {
   border-radius: 50%;
   background: rgba(14, 14, 17, 0.7);
   color: #fff;
-  cursor: pointer;
 }
 
 .track:hover .track-play {
@@ -928,7 +920,6 @@ button:disabled {
   border-radius: 50%;
   background: var(--text);
   color: var(--ink);
-  cursor: pointer;
   transition: transform 100ms;
 }
 
@@ -938,7 +929,6 @@ button:disabled {
 
 .play-btn:disabled {
   opacity: 0.4;
-  cursor: default;
 }
 
 .seek {
@@ -1349,7 +1339,6 @@ button:disabled {
   border: 0;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.18);
-  cursor: pointer;
   transition: background 150ms;
 }
 
@@ -1379,7 +1368,6 @@ button:disabled {
 
 .switch:disabled {
   opacity: 0.4;
-  cursor: default;
 }
 
 .tint-row {
