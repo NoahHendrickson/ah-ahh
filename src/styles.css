@@ -1090,7 +1090,33 @@ button {
 }
 
 .queue-meta {
+  flex: 1;
   min-width: 0;
+}
+
+/* Up Next editing: remove on hover, drag to reorder. */
+.queue-remove {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+}
+
+.queue-row:hover .queue-remove,
+.queue-remove:focus-visible {
+  opacity: 1;
+}
+
+.queue-row.dragging {
+  opacity: 0.4;
+}
+
+.queue-row.drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.queue-row.drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .queue-title,

@@ -71,7 +71,12 @@ export interface MusicKitInstance {
   volume: number;
   shuffleMode: number;
   repeatMode: number;
-  queue: { items: MediaItem[]; position: number };
+  queue: {
+    items: MediaItem[];
+    position: number;
+    /** Array-style splice of the queue (what MusicKit's deprecated queue.remove uses). Fires queueItemsDidChange. */
+    spliceQueueItems(start: number, deleteCount: number, insert?: unknown[]): unknown[];
+  };
   authorize(): Promise<string>;
   unauthorize(): Promise<void>;
   setQueue(options: Record<string, unknown>): Promise<unknown>;
@@ -280,6 +285,19 @@ export async function playSongs(songs: Resource[], startWith = 0, shuffle?: bool
   if (shuffle !== undefined) music.shuffleMode = shuffle ? ShuffleMode.songs : ShuffleMode.off;
   const rest = ids.slice(split);
   if (rest.length) void music.playLater({ songs: rest }).catch((err) => console.warn('Could not queue the remaining songs:', err));
+}
+
+/** Removes an upcoming song (not the one playing) from the queue. */
+export function removeFromQueue(index: number): void {
+  const queue = mk().queue;
+  if (index > queue.position) queue.spliceQueueItems(index, 1);
+}
+
+/** Moves an upcoming song so it ends up at index `to`. */
+export function moveInQueue(from: number, to: number): void {
+  const queue = mk().queue;
+  if (from === to || from <= queue.position || to <= queue.position) return;
+  queue.spliceQueueItems(to, 0, queue.spliceQueueItems(from, 1));
 }
 
 export async function playNext(song: Resource): Promise<void> {
