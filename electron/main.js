@@ -247,7 +247,7 @@ autoUpdater.on('error', (err) => {
   if (updateStatus !== 'ready') setUpdateStatus('error');
 });
 function checkForUpdates() {
-  if (app.isPackaged && updateStatus !== 'ready') autoUpdater.checkForUpdates().catch(() => {});
+  if (app.isPackaged && ['idle', 'latest', 'error'].includes(updateStatus)) autoUpdater.checkForUpdates().catch(() => {});
 }
 ipcMain.handle('update:status', () => updateStatus);
 ipcMain.handle('update:check', () => checkForUpdates());
