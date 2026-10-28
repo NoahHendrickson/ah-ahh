@@ -215,23 +215,14 @@ button {
 }
 
 .logo-mark {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #ffffff, #8e8e96);
-  box-shadow: 0 0 18px rgba(255, 255, 255, 0.25);
+  height: 1.1em;
+  width: auto;
 }
 
 .logo.big {
   font-size: 26px;
   gap: 12px;
   justify-content: center;
-}
-
-.logo.big .logo-mark {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
 }
 
 .sidebar-scroll {

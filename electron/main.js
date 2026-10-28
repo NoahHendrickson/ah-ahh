@@ -66,6 +66,7 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: canGlass ? '#00000000' : '#0e0e11',
     title: 'ah ahh',
+    icon: path.join(__dirname, 'icon.png'),
     titleBarStyle: 'hidden',
     ...(isMac
       ? {
@@ -263,6 +264,9 @@ app.on('second-instance', () => {
 app.on('window-all-closed', () => app.quit());
 
 app.whenReady().then(async () => {
+  // Unpackaged runs (npm start) would otherwise show Electron's icon in the Dock.
+  app.dock?.setIcon(path.join(__dirname, 'icon.png'));
+
   try {
     // Downloads/updates the Widevine CDM on first launch. Required for Apple Music playback.
     await components.whenReady();

@@ -31,7 +31,11 @@
       "output": "release"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "electron/icon.png"
+    },
+    "mac": {
+      "icon": "electron/icon.png"
     },
     "nsis": {
       "artifactName": "ah-ahh-Setup-${version}.${ext}"

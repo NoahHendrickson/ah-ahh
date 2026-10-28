@@ -1,4 +1,4 @@
-import { Album, Home, Playlists, Search, Settings, Songs } from '../icons';
+import { Album, Home, Logo, Playlists, Search, Settings, Songs } from '../icons';
 import type { ReactNode } from 'react';
 import { useLibrary } from '../library';
 import { useNav, type Route } from '../navigation';
@@ -18,7 +18,7 @@ export function Sidebar() {
     <nav className="sidebar">
       <div className="sidebar-top drag">
         <div className="logo">
-          <span className="logo-mark" />
+          <Logo />
           ah ahh
         </div>
       </div>

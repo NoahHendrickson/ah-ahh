@@ -1,4 +1,4 @@
-import { Key, Upload } from '../icons';
+import { Key, Logo, Upload } from '../icons';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { errorMessage, mk } from '../musickit';
 import { Spinner } from './Status';
@@ -9,7 +9,7 @@ function Centered({ children }: { children: ReactNode }) {
       <div className="drag screen-drag" />
       <div className="screen-card">
         <div className="logo big">
-          <span className="logo-mark" />
+          <Logo />
           ah ahh
         </div>
         {children}
