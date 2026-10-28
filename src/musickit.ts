@@ -299,26 +299,39 @@ export async function playContainer(container: Resource, startWith = 0, shuffle?
   await startQueue({ [key]: container.id, startWith }, shuffle);
 }
 
+/**
+ * Plays songs already loaded on a page, so MusicKit can start without looking each one up.
+ * `container` is the album or playlist they came from, so Apple still credits the play to it (Recently Played).
+ */
+export async function playSongs(songs: Resource[], startWith = 0, shuffle?: boolean, container?: Resource): Promise<void> {
+  // MusicKit drops unplayable songs and repeats of a song from the queue, which would shift `startWith`.
+  // Drop them here instead, keeping the chosen song (or the next playable one) where it is.
+  const chosen = songs.slice(startWith).find((s) => s.attributes?.playParams);
+  if (!chosen) return;
+  const seen = new Set([chosen.id]);
+  const items: Resource[] = [];
+  let start = 0;
+  for (const song of songs) {
+    if (song === chosen) start = items.push(song) - 1;
+    else if (song.attributes?.playParams && !seen.has(song.id)) {
+      seen.add(song.id);
+      items.push(song);
+    }
+  }
+  const from = container && { container, context: { featureName: queueKey(container.type) } };
+  await startQueue({ items, startWith: start, ...from }, shuffle);
+}
+
 /** Songs queued up front; the rest are appended once playback has started (MusicKit loads each one). */
 const FIRST_CHUNK = 25;
 
-export async function playSongs(songs: Resource[], startWith = 0, shuffle?: boolean): Promise<void> {
-  // Songs from a loaded page play straight away; by bare ID (the phone remote), MusicKit has to fetch them first.
-  if (songs.every((s) => s.attributes)) return startQueue(songsQueue(songs, startWith), shuffle);
+/** Plays songs by ID alone (the phone remote): MusicKit fetches each one, so queue a first chunk and append the rest. */
+export async function playSongIds(ids: string[], startWith = 0, shuffle?: boolean): Promise<void> {
   const music = mk();
-  const ids = songs.map((s) => s.id);
   const split = Math.max(FIRST_CHUNK, startWith + 1);
   await startQueue({ songs: ids.slice(0, split), startWith }, shuffle);
   const rest = ids.slice(split);
   if (rest.length) void music.playLater({ songs: rest }).catch((err) => console.warn('Could not queue the remaining songs:', err));
-}
-
-/** MusicKit drops repeated and unplayable songs from a queue, shifting `startWith`; drop them first so it still points at the chosen song. */
-function songsQueue(songs: Resource[], startWith: number) {
-  const seen = new Set<string>();
-  const items = songs.filter((s) => s.attributes?.playParams && !seen.has(s.id) && seen.add(s.id));
-  const start = items.findIndex((s) => s.id === songs[startWith]?.id);
-  return { items, startWith: Math.max(start, 0) };
 }
 
 /** Removes an upcoming song (not the one playing) from the queue. */

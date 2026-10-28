@@ -56,9 +56,9 @@ export function usePaged(path: string, pageSize = 100) {
   return { items, loading, error, done: next === null, loadMore };
 }
 
-/** Loads every page of an endpoint in the background, publishing items as each page arrives. */
+/** Loads every page of an endpoint in the background, publishing items as each page arrives. `complete`: every item arrived. */
 export function useAllPages(path: string, pageSize = 100, max = 5000) {
-  const [state, setState] = useState<{ items: Resource[]; loading: boolean; error?: unknown }>({ items: [], loading: true });
+  const [state, setState] = useState<{ items: Resource[]; loading: boolean; complete?: boolean; error?: unknown }>({ items: [], loading: true });
   useEffect(() => {
     let alive = true;
     setState({ items: [], loading: true });
@@ -69,7 +69,7 @@ export function useAllPages(path: string, pageSize = 100, max = 5000) {
         const { data, next } = result;
         count += data.length;
         const more = Boolean(next) && count < max;
-        setState((s) => ({ items: [...s.items, ...data], loading: more }));
+        setState((s) => ({ items: [...s.items, ...data], loading: more, complete: !next }));
         if (!more) break;
         result = await page(next!);
       }

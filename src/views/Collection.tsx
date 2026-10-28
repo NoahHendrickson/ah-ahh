@@ -20,7 +20,7 @@ export function CollectionView({ item }: { item: Resource }) {
 
   // Detail and tracks load in parallel; tracks render from the first page while the rest stream in.
   const info = useAsync(() => api<{ data: Resource[] }>(base), [base]);
-  const { items: tracks, loading, error: tracksError } = useAllPages(`${base}/tracks`);
+  const { items: tracks, loading, complete, error: tracksError } = useAllPages(`${base}/tracks`);
 
   const detail = info.data?.data[0] ?? item;
   const error = info.error ?? tracksError;
@@ -30,10 +30,12 @@ export function CollectionView({ item }: { item: Resource }) {
   const byline = kind === 'albums' ? [a.artistName, a.genreNames?.[0], year].filter(Boolean).join(' · ') : a.curatorName ?? (isLibrary ? 'Your playlist' : 'Playlist');
   const notes = plainText(a.description?.standard ?? a.description?.short ?? a.editorialNotes?.short);
   const artwork = a.artwork ?? tracks.find((t) => t.attributes?.artwork)?.attributes?.artwork;
-  // Play the tracks already on screen so MusicKit doesn't fetch the whole collection again first;
-  // until every page has arrived, let MusicKit load it.
+  // Play the tracks already on screen so MusicKit doesn't fetch the whole collection again first.
+  // Until they have all arrived, or if a song repeats (playSongs keeps one copy), let MusicKit load it.
   const play = (startWith: number, shuffle?: boolean) =>
-    void (loading ? playContainer(detail, startWith, shuffle) : playSongs(tracks, startWith, shuffle));
+    void (complete && new Set(tracks.map((t) => t.id)).size === tracks.length
+      ? playSongs(tracks, startWith, shuffle, detail)
+      : playContainer(detail, startWith, shuffle));
 
   return (
     <div className="page">
