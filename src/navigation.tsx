@@ -9,6 +9,7 @@ export type Route =
   | { view: 'playlists' }
   | { view: 'collection'; item: Resource }
   | { view: 'artist'; id: string; name?: string }
+  | { view: 'profile' }
   | { view: 'settings' };
 
 interface Navigation {

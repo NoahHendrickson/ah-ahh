@@ -60,6 +60,8 @@ interface AhAhhBridge {
   saveCredentials(creds: { teamId: string; keyId: string; privateKey: string }): Promise<string>;
   resetCredentials(): Promise<void>;
   getInfo(): Promise<AhAhhInfo>;
+  /** The computer account's name and picture (a data URL, or null if there isn't one). */
+  getProfile(): Promise<{ name: string; photo: string | null }>;
   getPrefs(): Promise<AhAhhPrefs>;
   setPrefs(patch: Partial<Pick<AhAhhPrefs, 'glass' | 'glassTint'>>): Promise<AhAhhPrefs>;
   publishNowPlaying(state: Record<string, unknown>): void;

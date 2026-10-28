@@ -1,11 +1,14 @@
 import { Album, Home, Logo, Playlists, Search, Settings, Songs } from '../icons';
 import type { ReactNode } from 'react';
+import { useAsync } from '../hooks';
 import { useLibrary } from '../library';
 import { useNav, type Route } from '../navigation';
+import { Avatar } from '../views/Profile';
 
 export function Sidebar() {
   const { route, navigate } = useNav();
   const { playlists } = useLibrary();
+  const { data: profile } = useAsync(() => window.ahahh!.getProfile(), []);
 
   const item = (target: Route, icon: ReactNode, label: string) => (
     <button className={`nav-item ${route.view === target.view ? 'active' : ''}`} onClick={() => navigate(target)}>
@@ -43,7 +46,16 @@ export function Sidebar() {
           </button>
         ))}
       </div>
-      <div className="sidebar-bottom">{item({ view: 'settings' }, <Settings />, 'Settings')}</div>
+      <div className="sidebar-bottom">
+        {item({ view: 'profile' }, <Avatar profile={profile} size={22} />, profile?.name ?? 'Profile')}
+        <button
+          className={`icon-btn ${route.view === 'settings' ? 'selected' : ''}`}
+          title="Settings"
+          onClick={() => navigate({ view: 'settings' })}
+        >
+          <Settings />
+        </button>
+      </div>
     </nav>
   );
 }
