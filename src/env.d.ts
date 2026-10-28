@@ -48,7 +48,7 @@ interface AhAhhRemoteReply {
   body: unknown;
 }
 
-type AhAhhUpdateStatus = 'idle' | 'latest' | 'downloading' | 'ready' | 'error';
+type AhAhhUpdateStatus = 'idle' | 'checking' | 'latest' | 'downloading' | 'ready' | 'error';
 
 interface AhAhhBridge {
   platform: string;
@@ -66,6 +66,7 @@ interface AhAhhBridge {
   getUpdateStatus(): Promise<AhAhhUpdateStatus>;
   /** Returns an unsubscribe function. */
   onUpdateStatus(callback: (status: AhAhhUpdateStatus) => void): () => void;
+  checkForUpdate(): Promise<void>;
   installUpdate(): Promise<void>;
   getRemotePairing(): Promise<AhAhhRemotePairing>;
   setRemoteEnabled(enabled: boolean): Promise<AhAhhRemotePairing>;

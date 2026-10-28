@@ -140,6 +140,7 @@ function RemotePanel() {
 
 const UPDATE_LABELS: Record<AhAhhUpdateStatus, string> = {
   idle: '',
+  checking: 'Checking for updates…',
   latest: 'Up to date',
   downloading: 'Downloading update…',
   ready: 'Update ready',
@@ -158,6 +159,11 @@ function UpdateStatus() {
   return (
     <>
       <p className="muted small">{UPDATE_LABELS[status]}</p>
+      {(status === 'latest' || status === 'error') && (
+        <button className="btn ghost" onClick={() => void window.ahahh!.checkForUpdate()}>
+          Check for updates
+        </button>
+      )}
       {status === 'ready' && (
         <button className="btn" onClick={() => void window.ahahh!.installUpdate()}>
           Restart to update
