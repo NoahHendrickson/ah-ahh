@@ -34,8 +34,6 @@
       "target": "nsis"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
       "artifactName": "ah-ahh-Setup-${version}.${ext}"
     },
     "publish": {
