@@ -11,6 +11,7 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
     saveCredentials: (creds) => ipcRenderer.invoke('musickit:save', creds),
     resetCredentials: () => ipcRenderer.invoke('musickit:reset'),
     getInfo: () => ipcRenderer.invoke('app:info'),
+    getProfile: () => ipcRenderer.invoke('profile:get'),
     getPrefs: () => ipcRenderer.invoke('prefs:get'),
     setPrefs: (patch) => ipcRenderer.invoke('prefs:set', patch),
     publishNowPlaying: (state) => ipcRenderer.send('nowplaying', state),

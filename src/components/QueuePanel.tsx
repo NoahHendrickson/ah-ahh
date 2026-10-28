@@ -1,6 +1,8 @@
 import { AddToPlaylist, Check, Close, Favorite, Grip, Repeat, RepeatOne, Shuffle } from '../icons';
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { flushSync } from 'react-dom';
+import { artMesh } from '../artMesh';
+import { useAsync } from '../hooks';
 import { useLibrary } from '../library';
 import {
   addToPlaylist,
@@ -43,8 +45,8 @@ export function QueuePanel({ open }: { open: boolean }) {
   });
 
   /**
-   * Press and move a row to lift it: it follows the pointer while the rows it passes slide out of
-   * the way, and the panel scrolls when held near its top or bottom edge. Release to drop it there.
+   * Press and hold (or move) a row to lift it: it follows the pointer while the rows it passes slide
+   * out of the way, and the panel scrolls when held near its top or bottom edge. Release to drop it.
    * A queue change mid-drag (a song ends, the phone edits it) puts the row back, since `from`, `to`
    * and `start` would no longer point at the same songs.
    */
@@ -58,6 +60,7 @@ export function QueuePanel({ open }: { open: boolean }) {
     let dy = 0;
     let to = from;
     let frame = 0;
+    let hold = 0;
     // Keeps the release coming here even if the pointer leaves the row or the window first.
     row.setPointerCapture(e.pointerId);
 
@@ -71,11 +74,17 @@ export function QueuePanel({ open }: { open: boolean }) {
       if (next !== to) setDrag({ from, to: (to = next) });
       frame = requestAnimationFrame(tick);
     };
-    const move = (ev: PointerEvent) => {
-      y = ev.clientY;
-      if (frame || Math.abs(y - e.clientY) < 4) return;
+    const lift = () => {
+      if (frame) return;
+      clearTimeout(hold);
       setDrag({ from, to });
       tick();
+    };
+    // A short hold lifts it in place; a quick click or double-click never does.
+    hold = window.setTimeout(lift, 150);
+    const move = (ev: PointerEvent) => {
+      y = ev.clientY;
+      if (Math.abs(y - e.clientY) >= 4) lift();
     };
     const listen = (on: boolean) => {
       const method = on ? 'addEventListener' : 'removeEventListener';
@@ -88,6 +97,7 @@ export function QueuePanel({ open }: { open: boolean }) {
     };
     const cancel = () => {
       listen(false);
+      clearTimeout(hold);
       cancelAnimationFrame(frame);
       if (!frame) return;
       row.style.removeProperty('--dy');
@@ -95,6 +105,7 @@ export function QueuePanel({ open }: { open: boolean }) {
     };
     const drop = () => {
       listen(false);
+      clearTimeout(hold);
       cancelAnimationFrame(frame);
       if (!frame) return;
       // Commit the move with transitions off so the other rows don't slide twice, then ease
@@ -122,9 +133,8 @@ export function QueuePanel({ open }: { open: boolean }) {
   return (
     <aside className={`queue ${open ? 'open' : ''}`} inert={!open} aria-hidden={!open}>
       <div className="queue-inner">
-        <h3>Now Playing</h3>
-        {item ? <NowPlayingCard key={item.id} item={item} playing={isPlaying} /> : <p className="muted">Nothing playing</p>}
-        <h3 className="up-next">Up Next</h3>
+        {item ? <NowPlayingCard key={item.id} item={item} playing={isPlaying} visible={open} /> : <p className="muted">Nothing playing</p>}
+        <h3>Queue</h3>
         {upcoming.length === 0 && <p className="muted">Your queue is empty.</p>}
         <div className={`queue-list ${drag ? 'reordering' : ''}`}>
           {upcoming.map((entry, i) => (
@@ -147,8 +157,10 @@ export function QueuePanel({ open }: { open: boolean }) {
   );
 }
 
-function NowPlayingCard({ item, playing }: { item: MediaItem; playing: boolean }) {
+function NowPlayingCard({ item, playing, visible }: { item: MediaItem; playing: boolean; visible: boolean }) {
   const art = itemArtwork(item, 192);
+  const meshArt = itemArtwork(item, 24);
+  const { data: mesh } = useAsync(() => (meshArt ? artMesh(meshArt) : Promise.reject()), [meshArt]);
   const song = songRef(item);
   // Set by the add-to-playlist menu: what happened, shown briefly under the buttons.
   const [notice, setNotice] = useState('');
@@ -161,6 +173,12 @@ function NowPlayingCard({ item, playing }: { item: MediaItem; playing: boolean }
 
   return (
     <div className="now-card">
+      {mesh && (
+        <div className="now-card-bg" aria-hidden>
+          {/* Turns only while it's playing and the panel is open. */}
+          <div className={`now-card-mesh ${playing && visible ? '' : 'paused'}`} style={{ background: mesh }} />
+        </div>
+      )}
       <div className="now-card-main">
         <div className="artwork" style={{ width: 96, height: 96 }}>
           {art && <img src={art} alt="" draggable={false} />}
@@ -326,7 +344,7 @@ function QueueRow({ title, artist, art, order = 0, lifted, shift, onClick, onRem
       </div>
       <button
         className="icon-btn queue-remove"
-        title="Remove from Up Next"
+        title="Remove from Queue"
         onClick={onRemove}
         onDoubleClick={(e) => e.stopPropagation()}
       >

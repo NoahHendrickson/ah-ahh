@@ -2,15 +2,25 @@ import { Album, Home, Logo, Playlists, Search, Settings, Songs } from '../icons'
 import type { ReactNode } from 'react';
 import { useLibrary } from '../library';
 import { useNav, type Route } from '../navigation';
+import { useProfile } from '../profile';
+import { Avatar } from './Avatar';
 
 export function Sidebar() {
   const { route, navigate } = useNav();
   const { playlists } = useLibrary();
+  const profile = useProfile();
 
+  const current = (target: Route) => route.view === target.view;
   const item = (target: Route, icon: ReactNode, label: string) => (
-    <button className={`nav-item ${route.view === target.view ? 'active' : ''}`} onClick={() => navigate(target)}>
+    <button className={`nav-item ${current(target) ? 'active' : ''}`} onClick={() => navigate(target)}>
       {icon}
       <span>{label}</span>
+    </button>
+  );
+  // Same as item(), as a bare icon.
+  const iconItem = (target: Route, icon: ReactNode, title: string) => (
+    <button className={`icon-btn ${current(target) ? 'current' : ''}`} title={title} onClick={() => navigate(target)}>
+      {icon}
     </button>
   );
 
@@ -43,7 +53,10 @@ export function Sidebar() {
           </button>
         ))}
       </div>
-      <div className="sidebar-bottom">{item({ view: 'settings' }, <Settings />, 'Settings')}</div>
+      <div className="sidebar-bottom">
+        {item({ view: 'profile' }, <Avatar profile={profile} size={22} />, profile?.name ?? 'Profile')}
+        {iconItem({ view: 'settings' }, <Settings />, 'Settings')}
+      </div>
     </nav>
   );
 }

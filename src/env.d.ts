@@ -7,6 +7,12 @@ interface AhAhhInfo {
   widevine: Record<string, { title?: string; status?: string; version?: string }>;
 }
 
+/** The computer account's name and picture (a data URL, or null if there isn't one). */
+interface AhAhhProfile {
+  name: string;
+  photo: string | null;
+}
+
 interface AhAhhPrefs {
   glass: boolean;
   /** 0–1: how dark/opaque the tint over the frosted glass is. */
@@ -60,6 +66,7 @@ interface AhAhhBridge {
   saveCredentials(creds: { teamId: string; keyId: string; privateKey: string }): Promise<string>;
   resetCredentials(): Promise<void>;
   getInfo(): Promise<AhAhhInfo>;
+  getProfile(): Promise<AhAhhProfile>;
   getPrefs(): Promise<AhAhhPrefs>;
   setPrefs(patch: Partial<Pick<AhAhhPrefs, 'glass' | 'glassTint'>>): Promise<AhAhhPrefs>;
   publishNowPlaying(state: Record<string, unknown>): void;

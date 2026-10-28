@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PlayerBar } from './components/PlayerBar';
 import { QueuePanel } from './components/QueuePanel';
+import { paneWidths, Resizer } from './components/Resizer';
 import { ErrorScreen, LoadingScreen, SetupScreen, SignInScreen } from './components/Screens';
 import { Sidebar } from './components/Sidebar';
 import { LibraryProvider } from './library';
@@ -11,6 +12,7 @@ import { ArtistView } from './views/Artist';
 import { CollectionView } from './views/Collection';
 import { HomeView } from './views/Home';
 import { AlbumsView, PlaylistsView, SongsView } from './views/Library';
+import { ProfileView } from './views/Profile';
 import { SearchView } from './views/Search';
 import { SettingsView } from './views/Settings';
 
@@ -91,7 +93,7 @@ export function App() {
 function Shell() {
   const [queueOpen, setQueueOpen] = useState(false);
 
-  // Starting something new opens Up Next; auto-advancing songs doesn't, so closing it sticks.
+  // Starting something new opens the queue; auto-advancing songs doesn't, so closing it sticks.
   useEffect(() => {
     const open = () => setQueueOpen(true);
     window.addEventListener(PLAY_STARTED, open);
@@ -99,6 +101,8 @@ function Shell() {
   }, []);
   const { pageKey } = useNav();
   const scroller = useRef<HTMLElement>(null);
+  // Set once; the resizers change these on the element directly while dragging.
+  const [widths] = useState(paneWidths);
 
   // New page → start at the top.
   useEffect(() => {
@@ -106,8 +110,9 @@ function Shell() {
   }, [pageKey]);
 
   return (
-    <div className={`app platform-${window.ahahh?.platform} ${queueOpen ? 'with-queue' : ''}`}>
+    <div className={`app platform-${window.ahahh?.platform} ${queueOpen ? 'with-queue' : ''}`} style={widths}>
       <Sidebar />
+      <Resizer pane="sidebar" />
       {/* Window drag strip over the top of <main> (same grid cell) rather than inside it,
           so the scrolling content can fade out beneath it in glass mode. */}
       <div className="topbar drag" />
@@ -118,6 +123,7 @@ function Shell() {
         </div>
       </main>
       <QueuePanel open={queueOpen} />
+      {queueOpen && <Resizer pane="queue" />}
       <PlayerBar queueOpen={queueOpen} onToggleQueue={() => setQueueOpen((o) => !o)} />
     </div>
   );
@@ -140,6 +146,8 @@ function View() {
       return <CollectionView key={route.item.id} item={route.item} />;
     case 'artist':
       return <ArtistView key={route.id} id={route.id} name={route.name} />;
+    case 'profile':
+      return <ProfileView />;
     case 'settings':
       return <SettingsView />;
   }

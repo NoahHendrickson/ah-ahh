@@ -6,6 +6,7 @@ const QRCode = require('qrcode');
 const { autoUpdater } = require('electron-updater');
 const credentials = require('./credentials');
 const prefs = require('./prefs');
+const profile = require('./profile');
 const { readToken, resetToken, startRemote } = require('./remote');
 const { startServer } = require('./server');
 
@@ -123,6 +124,8 @@ ipcMain.handle('app:info', () => ({
   nowPlayingTextUrl: `${ORIGIN}/now-playing.txt`,
   widevine: components.status(),
 }));
+
+ipcMain.handle('profile:get', () => profile.read());
 const currentPrefs = () => ({ ...prefs.get(), glassSupported: prefs.glassSupported() });
 ipcMain.handle('prefs:get', currentPrefs);
 ipcMain.on('prefs:get-sync', (event) => {
