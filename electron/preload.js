@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // Only the app's own pages get the bridge, not Apple's sign-in popup.
 if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
-  contextBridge.exposeInMainWorld('encore', {
+  contextBridge.exposeInMainWorld('ahahh', {
     platform: process.platform,
     // Read synchronously so the renderer can apply glass before its first paint.
     prefs: ipcRenderer.sendSync('prefs:get-sync'),

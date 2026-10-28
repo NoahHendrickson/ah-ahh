@@ -90,7 +90,7 @@ export function SetupScreen({ onSaved }: { onSaved(token: string): void }) {
     e.preventDefault();
     setError('');
     try {
-      onSaved(await window.encore!.saveCredentials({ teamId, keyId, privateKey }));
+      onSaved(await window.ahahh!.saveCredentials({ teamId, keyId, privateKey }));
     } catch (err) {
       setError(errorMessage(err));
     }

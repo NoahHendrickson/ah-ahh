@@ -201,7 +201,7 @@ function queueKey(type: string): string | null {
 }
 
 /** Window event fired when the user starts playing something new (not auto-advance to the next song). */
-export const PLAY_STARTED = 'encore:play-started';
+export const PLAY_STARTED = 'ahahh:play-started';
 
 /** `shuffle` undefined keeps the user's current shuffle setting (e.g. clicking a single track). */
 export async function playContainer(container: Resource, startWith = 0, shuffle?: boolean): Promise<void> {

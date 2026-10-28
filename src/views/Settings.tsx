@@ -26,22 +26,22 @@ function CopyField({ value }: { value: string }) {
 }
 
 function AppearancePanel() {
-  const [prefs, setPrefs] = useState<EncorePrefs | null>(null);
+  const [prefs, setPrefs] = useState<AhAhhPrefs | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
-    void window.encore!.getPrefs().then(setPrefs);
+    void window.ahahh!.getPrefs().then(setPrefs);
     return () => clearTimeout(saveTimer.current);
   }, []);
 
   if (!prefs) return null;
 
-  const update = (patch: Partial<EncorePrefs>, saveDelay = 0) => {
+  const update = (patch: Partial<AhAhhPrefs>, saveDelay = 0) => {
     const next = { ...prefs, ...patch };
     setPrefs(next);
     applyAppearance(next);
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => void window.encore!.setPrefs({ glass: next.glass, glassTint: next.glassTint }), saveDelay);
+    saveTimer.current = setTimeout(() => void window.ahahh!.setPrefs({ glass: next.glass, glassTint: next.glassTint }), saveDelay);
   };
 
   return (
@@ -86,11 +86,11 @@ function AppearancePanel() {
 }
 
 export function SettingsView() {
-  const { data: info } = useAsync(() => window.encore!.getInfo(), []);
+  const { data: info } = useAsync(() => window.ahahh!.getInfo(), []);
 
   const replaceKey = async () => {
     if (!confirm('Remove your saved MusicKit key? You will need to set it up again.')) return;
-    await window.encore!.resetCredentials();
+    await window.ahahh!.resetCredentials();
     location.reload();
   };
 

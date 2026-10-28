@@ -8,7 +8,7 @@ const { startServer } = require('./server');
 // so the origin (and therefore the port) must stay the same between launches.
 const PORT = 10770;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
-const DEV_URL = process.env.ENCORE_DEV_URL;
+const DEV_URL = process.env.AHAHH_DEV_URL;
 
 // Apple's sign-in pages are picky about unfamiliar browsers; present as plain Chrome.
 // Electron adds "<app name without spaces>/<version>" to the user agent.

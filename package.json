@@ -7,7 +7,7 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "vite build && electron .",
-    "dev": "concurrently -k -n vite,app \"vite\" \"wait-on tcp:5173 && cross-env ENCORE_DEV_URL=http://localhost:5173 electron .\"",
+    "dev": "concurrently -k -n vite,app \"vite\" \"wait-on tcp:5173 && cross-env AHAHH_DEV_URL=http://localhost:5173 electron .\"",
     "build": "tsc --noEmit && vite build",
     "vmp:sign-dev": "python3 -m castlabs_evs.vmp sign-pkg node_modules/electron/dist",
     "dist:win": "npm run build && electron-builder --win --x64"

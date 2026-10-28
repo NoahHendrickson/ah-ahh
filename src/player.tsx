@@ -43,8 +43,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const music = mk();
-    const saved = Number(localStorage.getItem('encore.volume'));
-    if (localStorage.getItem('encore.volume') !== null && Number.isFinite(saved)) music.volume = saved;
+    const saved = Number(localStorage.getItem('ahahh.volume'));
+    if (localStorage.getItem('ahahh.volume') !== null && Number.isFinite(saved)) music.volume = saved;
 
     // MusicKit fires several events per song change; coalesce them so one change = one render.
     // (A timer, not requestAnimationFrame: rAF pauses while the window is hidden behind a game,
@@ -57,7 +57,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const update = () => {
       pending ??= setTimeout(apply, 30);
     };
-    const saveVolume = () => localStorage.setItem('encore.volume', String(music.volume));
+    const saveVolume = () => localStorage.setItem('ahahh.volume', String(music.volume));
     STATE_EVENTS.forEach((name) => music.addEventListener(name, update));
     music.addEventListener('playbackVolumeDidChange', saveVolume);
     apply();
@@ -194,7 +194,7 @@ function useNowPlayingBroadcast(state: PlayerState) {
     const publish = () => {
       const positionMs = (music.currentPlaybackTime || 0) * 1000;
       last = { positionMs, updatedAt: Date.now(), playing: music.isPlaying };
-      window.encore?.publishNowPlaying({
+      window.ahahh?.publishNowPlaying({
         playing: music.isPlaying,
         title: item ? itemTitle(item) : null,
         artist: itemArtist(item),

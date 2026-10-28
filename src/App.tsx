@@ -22,7 +22,7 @@ export function App() {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!window.encore) {
+    if (!window.ahahh) {
       setPhase({ name: 'error', error: 'Open ah ahh through the desktop app, not a regular browser.' });
       return;
     }
@@ -32,7 +32,7 @@ export function App() {
     (async () => {
       // Download MusicKit while the token is fetched; initMusicKit reports any load error.
       preloadMusicKit().catch(() => {});
-      const token = await window.encore!.getDeveloperToken();
+      const token = await window.ahahh!.getDeveloperToken();
       if (cancelled) return;
       if (!token) return setPhase({ name: 'setup' });
       const music = await initMusicKit(token);
@@ -57,7 +57,7 @@ export function App() {
   };
 
   const replaceKey = async () => {
-    await window.encore?.resetCredentials();
+    await window.ahahh?.resetCredentials();
     location.reload();
   };
 
@@ -67,7 +67,7 @@ export function App() {
     case 'setup':
       return <SetupScreen onSaved={retry} />;
     case 'error':
-      return <ErrorScreen error={phase.error} onRetry={retry} onReplaceKey={window.encore ? replaceKey : undefined} />;
+      return <ErrorScreen error={phase.error} onRetry={retry} onReplaceKey={window.ahahh ? replaceKey : undefined} />;
     case 'signin':
       return <SignInScreen />;
     case 'ready':
@@ -101,7 +101,7 @@ function Shell() {
   }, [pageKey]);
 
   return (
-    <div className={`app platform-${window.encore?.platform} ${queueOpen ? 'with-queue' : ''}`}>
+    <div className={`app platform-${window.ahahh?.platform} ${queueOpen ? 'with-queue' : ''}`}>
       <Sidebar />
       {/* Sits over the top of <main> (same grid cell) rather than inside it, so the
           scrolling content can fade out beneath it in glass mode. */}
