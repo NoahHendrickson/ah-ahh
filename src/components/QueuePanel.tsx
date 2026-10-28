@@ -45,18 +45,21 @@ export function QueuePanel({ open }: { open: boolean }) {
   /**
    * Press and move a row to lift it: it follows the pointer while the rows it passes slide out of
    * the way, and the panel scrolls when held near its top or bottom edge. Release to drop it there.
+   * A queue change mid-drag (a song ends, the phone edits it) puts the row back, since `from`, `to`
+   * and `start` would no longer point at the same songs.
    */
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>, from: number) => {
     if (e.button !== 0 || (e.target as Element).closest('button')) return;
     const row = e.currentTarget;
     const scroller = row.closest<HTMLElement>('.queue-inner')!;
     const height = row.offsetHeight;
-    const pointer = e.pointerId;
     const startY = e.clientY + scroller.scrollTop;
     let y = e.clientY;
     let dy = 0;
     let to = from;
     let frame = 0;
+    // Keeps the release coming here even if the pointer leaves the row or the window first.
+    row.setPointerCapture(e.pointerId);
 
     // Runs every frame once lifted, so edge scrolling continues while the pointer holds still.
     const tick = () => {
@@ -71,16 +74,29 @@ export function QueuePanel({ open }: { open: boolean }) {
     const move = (ev: PointerEvent) => {
       y = ev.clientY;
       if (frame || Math.abs(y - e.clientY) < 4) return;
-      row.setPointerCapture(pointer);
       setDrag({ from, to });
       tick();
     };
-    const end = () => {
-      row.removeEventListener('pointermove', move);
-      row.removeEventListener('pointerup', end);
-      row.removeEventListener('pointercancel', end);
-      if (!frame) return;
+    const listen = (on: boolean) => {
+      const method = on ? 'addEventListener' : 'removeEventListener';
+      window[method]('pointermove', move as EventListener);
+      window[method]('pointerup', drop);
+      window[method]('pointercancel', cancel);
+      window[method]('blur', cancel);
+      mk()[method]('queueItemsDidChange', cancel);
+      mk()[method]('queuePositionDidChange', cancel);
+    };
+    const cancel = () => {
+      listen(false);
       cancelAnimationFrame(frame);
+      if (!frame) return;
+      row.style.removeProperty('--dy');
+      setDrag(null);
+    };
+    const drop = () => {
+      listen(false);
+      cancelAnimationFrame(frame);
+      if (!frame) return;
       // Commit the move with transitions off so the other rows don't slide twice, then ease
       // the dropped row from where it was let go into its new place.
       const { boxShadow, backgroundColor } = getComputedStyle(row);
@@ -94,14 +110,13 @@ export function QueuePanel({ open }: { open: boolean }) {
       row.style.removeProperty('--dy');
       void scroller.offsetHeight;
       scroller.classList.remove('settling');
-      row.animate([{ transform: `translateY(${dy - (to - from) * height}px) scale(1.02)`, boxShadow, backgroundColor }], {
+      const transform = `translateY(${dy - (to - from) * height}px) scale(1.02)`;
+      row.animate([{ offset: 0, transform, boxShadow, backgroundColor }], {
         duration: 220,
         easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
       });
     };
-    row.addEventListener('pointermove', move);
-    row.addEventListener('pointerup', end);
-    row.addEventListener('pointercancel', end);
+    listen(true);
   };
 
   return (
