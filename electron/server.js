@@ -14,9 +14,9 @@ const MIME = {
 };
 
 /**
- * For the app's pages: scripts only from here and Apple's MusicKit CDN. Media, images, fonts and API calls come
- * from many Apple hosts and blob: URLs, so nothing else is restricted. Workers would otherwise fall back to
- * script-src, which would block blob: workers (HLS playback can use them).
+ * Sent with every app file (it only has effect on HTML): scripts only from here and Apple's MusicKit CDN. Media,
+ * images, fonts and API calls come from many Apple hosts and blob: URLs, so nothing else is restricted. Workers
+ * would otherwise fall back to script-src, which would block blob: workers (HLS playback can use them).
  */
 const APP_CSP = {
   'content-security-policy': "script-src 'self' https://js-cdn.music.apple.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'",
@@ -45,7 +45,15 @@ function startServer({ port, rendererDir, overlayFile }) {
   const clients = new Set();
 
   const server = http.createServer((req, res) => {
-    const { pathname } = new URL(req.url, 'http://localhost');
+    let pathname, relative;
+    try {
+      pathname = new URL(req.url, 'http://localhost').pathname;
+      // Where a static file request lands: "/../x" normalizes to "/x" before the leading slashes go.
+      relative = path.normalize(decodeURIComponent(pathname)).replace(/^[/\\]+/, '');
+    } catch {
+      // Malformed request path such as "//" or "/%zz"; either call above would otherwise throw out of the handler.
+      return res.writeHead(400).end();
+    }
     const open = { 'access-control-allow-origin': '*', 'cache-control': 'no-store' };
 
     if (pathname === '/overlay') return sendFile(res, overlayFile);
@@ -69,19 +77,9 @@ function startServer({ port, rendererDir, overlayFile }) {
     }
 
     // Static app files, falling back to index.html.
-    let relative;
-    try {
-      relative = path.normalize(decodeURIComponent(pathname)).replace(/^[/\\]+/, '');
-    } catch {
-      // Malformed percent-encoding such as "/%zz".
-      return res.writeHead(400).end();
-    }
     const file = path.join(rendererDir, relative);
     if (!file.startsWith(rendererDir)) return res.writeHead(403).end();
-    fs.stat(file, (err, stat) => {
-      const target = !err && stat.isFile() ? file : path.join(rendererDir, 'index.html');
-      sendFile(res, target, path.extname(target) === '.html' ? APP_CSP : undefined);
-    });
+    fs.stat(file, (err, stat) => sendFile(res, !err && stat.isFile() ? file : path.join(rendererDir, 'index.html'), APP_CSP));
   });
 
   // Keep idle SSE connections (OBS browser sources) from being dropped.

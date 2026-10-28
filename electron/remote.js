@@ -5,24 +5,27 @@ const path = require('node:path');
 
 /** The pairing token, kept in its own file so paired phones keep working across launches. */
 function readToken(file) {
+  let token;
   try {
-    const { token } = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (token) {
-      fs.chmodSync(file, 0o600); // Older versions wrote it world-readable.
-      return token;
-    }
+    ({ token } = JSON.parse(fs.readFileSync(file, 'utf8')));
   } catch {
     // Missing or unreadable: make a new one.
   }
-  return resetToken(file);
+  if (!token) return resetToken(file);
+  try {
+    fs.chmodSync(file, 0o600); // Older versions wrote it world-readable.
+  } catch {
+    // Best effort: not worth losing the pairing over.
+  }
+  return token;
 }
 
 function resetToken(file) {
   const token = crypto.randomBytes(24).toString('base64url');
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  // Owner-only, like musickit.json. writeFileSync only applies the mode to new files, so fix up existing ones too.
+  // Owner-only, like musickit.json. Recreated rather than overwritten, since the mode only applies to new files.
+  fs.rmSync(file, { force: true });
   fs.writeFileSync(file, JSON.stringify({ token }), { mode: 0o600 });
-  fs.chmodSync(file, 0o600);
   return token;
 }
 
@@ -152,7 +155,13 @@ function startRemote({ port, token, info, state, command, request }) {
     const given = Buffer.from(req.headers.authorization ?? '');
     if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return json(res, 401, { error: 'unauthorized' });
 
-    const route = `${req.method} ${new URL(req.url, 'http://localhost').pathname}`;
+    let pathname;
+    try {
+      ({ pathname } = new URL(req.url, 'http://localhost'));
+    } catch {
+      return json(res, 400, { error: 'bad request' });
+    }
+    const route = `${req.method} ${pathname}`;
 
     if (route === 'GET /v1/info') return json(res, 200, info);
     if (route === 'GET /v1/state') return json(res, 200, remoteState(state));
