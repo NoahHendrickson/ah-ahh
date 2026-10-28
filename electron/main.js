@@ -1,4 +1,5 @@
 const { app, BrowserWindow, components, dialog, ipcMain, nativeTheme, shell } = require('electron');
+const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const QRCode = require('qrcode');
@@ -232,6 +233,17 @@ function setUpdateStatus(status) {
   updateStatus = status;
   win?.webContents.send('update:status', status);
 }
+// Kept in <userData>/updater.log so a failed update on someone's PC can be diagnosed.
+const logUpdate =
+  (level) =>
+  (...args) => {
+    try {
+      fs.appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `${new Date().toISOString()} ${level} ${args.join(' ')}\n`);
+    } catch {
+      // Logging must never break updating.
+    }
+  };
+autoUpdater.logger = { info: logUpdate('info'), warn: logUpdate('warn'), error: logUpdate('error'), debug() {} };
 autoUpdater.on('update-available', () => setUpdateStatus('downloading'));
 autoUpdater.on('update-not-available', () => setUpdateStatus('latest'));
 autoUpdater.on('update-downloaded', () => setUpdateStatus('ready'));
@@ -243,7 +255,8 @@ function checkForUpdates() {
   if (app.isPackaged && updateStatus !== 'ready') autoUpdater.checkForUpdates().catch(() => {});
 }
 ipcMain.handle('update:status', () => updateStatus);
-ipcMain.handle('update:install', () => autoUpdater.quitAndInstall());
+// Silent (no installer wizard), then reopen ah ahh once it's installed.
+ipcMain.handle('update:install', () => autoUpdater.quitAndInstall(true, true));
 
 app.on('second-instance', () => {
   if (!win) return;
