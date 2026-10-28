@@ -10,7 +10,8 @@
     "dev": "concurrently -k -n vite,app \"vite\" \"wait-on tcp:5173 && cross-env AHAHH_DEV_URL=http://localhost:5173 electron .\"",
     "build": "tsc --noEmit && vite build",
     "vmp:sign-dev": "python3 -m castlabs_evs.vmp sign-pkg node_modules/electron/dist",
-    "dist:win": "npm run build && electron-builder --win --x64"
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "release:win": "npm run build && GH_TOKEN=$(gh auth token) electron-builder --win --x64 --publish always"
   },
   "build": {
     "appId": "dev.noey.ahahh",
@@ -33,7 +34,14 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "ah-ahh-Setup-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "NoahHendrickson",
+      "repo": "ah-ahh",
+      "releaseType": "release"
     }
   },
   "devDependencies": {
@@ -51,6 +59,7 @@
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.3.5",
     "@hugeicons/react": "^1.1.10",
+    "electron-updater": "^6.8.11",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

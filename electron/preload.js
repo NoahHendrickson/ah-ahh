@@ -13,5 +13,12 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
     getPrefs: () => ipcRenderer.invoke('prefs:get'),
     setPrefs: (patch) => ipcRenderer.invoke('prefs:set', patch),
     publishNowPlaying: (state) => ipcRenderer.send('nowplaying', state),
+    getUpdateStatus: () => ipcRenderer.invoke('update:status'),
+    onUpdateStatus: (callback) => {
+      const listener = (_event, status) => callback(status);
+      ipcRenderer.on('update:status', listener);
+      return () => ipcRenderer.removeListener('update:status', listener);
+    },
+    installUpdate: () => ipcRenderer.invoke('update:install'),
   });
 }

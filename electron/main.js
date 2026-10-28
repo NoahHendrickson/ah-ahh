@@ -1,5 +1,6 @@
 const { app, BrowserWindow, components, dialog, ipcMain, nativeTheme, shell } = require('electron');
 const path = require('node:path');
+const { autoUpdater } = require('electron-updater');
 const credentials = require('./credentials');
 const prefs = require('./prefs');
 const { startServer } = require('./server');
@@ -124,6 +125,26 @@ ipcMain.handle('prefs:set', (_event, patch) => {
 });
 ipcMain.on('nowplaying', (_event, state) => server?.publish(state));
 
+// Updates come from GitHub Releases: downloaded in the background, installed on quit
+// (or right away via "Restart to update" in Settings).
+let updateStatus = 'idle';
+function setUpdateStatus(status) {
+  updateStatus = status;
+  win?.webContents.send('update:status', status);
+}
+autoUpdater.on('update-available', () => setUpdateStatus('downloading'));
+autoUpdater.on('update-not-available', () => setUpdateStatus('latest'));
+autoUpdater.on('update-downloaded', () => setUpdateStatus('ready'));
+autoUpdater.on('error', (err) => {
+  console.error('Update check failed:', err);
+  if (updateStatus !== 'ready') setUpdateStatus('error');
+});
+function checkForUpdates() {
+  if (app.isPackaged && updateStatus !== 'ready') autoUpdater.checkForUpdates().catch(() => {});
+}
+ipcMain.handle('update:status', () => updateStatus);
+ipcMain.handle('update:install', () => autoUpdater.quitAndInstall());
+
 app.on('second-instance', () => {
   if (!win) return;
   if (win.isMinimized()) win.restore();
@@ -156,4 +177,6 @@ app.whenReady().then(async () => {
   }
 
   createWindow();
+  checkForUpdates();
+  setInterval(checkForUpdates, 6 * 60 * 60 * 1000);
 });

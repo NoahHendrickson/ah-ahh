@@ -85,6 +85,35 @@ function AppearancePanel() {
   );
 }
 
+const UPDATE_LABELS: Record<AhAhhUpdateStatus, string> = {
+  idle: '',
+  latest: 'Up to date',
+  downloading: 'Downloading update…',
+  ready: 'Update ready',
+  error: 'Couldn’t check for updates',
+};
+
+function UpdateStatus() {
+  const [status, setStatus] = useState<AhAhhUpdateStatus>('idle');
+
+  useEffect(() => {
+    void window.ahahh!.getUpdateStatus().then(setStatus);
+    return window.ahahh!.onUpdateStatus(setStatus);
+  }, []);
+
+  if (status === 'idle') return null;
+  return (
+    <>
+      <p className="muted small">{UPDATE_LABELS[status]}</p>
+      {status === 'ready' && (
+        <button className="btn" onClick={() => void window.ahahh!.installUpdate()}>
+          Restart to update
+        </button>
+      )}
+    </>
+  );
+}
+
 export function SettingsView() {
   const { data: info } = useAsync(() => window.ahahh!.getInfo(), []);
 
@@ -136,6 +165,7 @@ export function SettingsView() {
       <section className="panel">
         <h2>About</h2>
         <p className="muted small">ah ahh {info?.version}</p>
+        <UpdateStatus />
         {info &&
           Object.values(info.widevine ?? {}).map((c) => (
             <p key={c.title} className="muted small">

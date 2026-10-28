@@ -60,12 +60,24 @@ npm run vmp:sign-dev
 ## 4. Build the Windows installer
 
 ```sh
-npm run dist:win               # → release/ah ahh Setup 0.1.0.exe
+npm run dist:win               # → release/ah-ahh-Setup-0.1.0.exe
 SKIP_VMP=1 npm run dist:win    # build without Widevine signing (playback may fail)
 ```
 
-This works from macOS too. Copy `release/ah ahh Setup 0.1.0.exe` to the Windows PC and
-run it. The installer isn't code-signed, so SmartScreen will warn: click **More info → Run anyway**.
+This works from macOS too. Copy `release/ah-ahh-Setup-0.1.0.exe` to the Windows PC and
+run it, or download it from [Releases](https://github.com/NoahHendrickson/ah-ahh/releases).
+The installer isn't code-signed, so SmartScreen will warn: click **More info → Run anyway**.
+
+### Publishing an update
+
+Installed copies check GitHub Releases on launch and every few hours, download new versions
+in the background, and install them on quit (or via **Settings → Restart to update**).
+
+```sh
+npm version patch     # bump the version (0.1.0 → 0.1.1)
+npm run release:win   # build, sign, and publish the GitHub release (uses `gh auth token`)
+git push --follow-tags
+```
 
 ---
 

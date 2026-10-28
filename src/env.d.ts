@@ -14,6 +14,8 @@ interface AhAhhPrefs {
   glassSupported: boolean;
 }
 
+type AhAhhUpdateStatus = 'idle' | 'latest' | 'downloading' | 'ready' | 'error';
+
 interface AhAhhBridge {
   platform: string;
   /** Prefs as they were when the page loaded (read synchronously by the preload). */
@@ -25,6 +27,10 @@ interface AhAhhBridge {
   getPrefs(): Promise<AhAhhPrefs>;
   setPrefs(patch: Partial<Pick<AhAhhPrefs, 'glass' | 'glassTint'>>): Promise<AhAhhPrefs>;
   publishNowPlaying(state: Record<string, unknown>): void;
+  getUpdateStatus(): Promise<AhAhhUpdateStatus>;
+  /** Returns an unsubscribe function. */
+  onUpdateStatus(callback: (status: AhAhhUpdateStatus) => void): () => void;
+  installUpdate(): Promise<void>;
 }
 
 interface Window {
