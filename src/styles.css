@@ -94,6 +94,7 @@ h3 {
 
 a {
   color: var(--accent);
+  cursor: pointer;
 }
 
 code {
@@ -107,6 +108,11 @@ code {
 button {
   font: inherit;
   color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
 }
 
 .muted {
@@ -671,6 +677,7 @@ button {
   /* Equal padding around the artwork; a bit more on the right so the duration isn't on the edge. */
   padding: var(--row-pad) 16px var(--row-pad) var(--row-pad);
   border-radius: 8px;
+  cursor: pointer;
 }
 
 .tracks.no-album .track {
@@ -687,6 +694,7 @@ button {
 
 .track.unavailable {
   opacity: 0.4;
+  cursor: default;
 }
 
 .track-lead {
@@ -1174,7 +1182,7 @@ button {
   gap: 11px;
   padding: 6px;
   border-radius: 8px;
-  cursor: default;
+  cursor: pointer;
 }
 
 .queue-row:hover {
