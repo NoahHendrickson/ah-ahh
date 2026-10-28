@@ -1,7 +1,6 @@
 // App icon set: Hugeicons (free, stroke-rounded). https://hugeicons.com
 import {
   Add01Icon,
-  ArrowLeft01Icon,
   ArrowReloadHorizontalIcon,
   Cancel01Icon,
   Copy01Icon,
@@ -56,7 +55,6 @@ function icon(svg: IconSvgElement, filledByDefault = false) {
 }
 
 // Navigation
-export const Back = icon(ArrowLeft01Icon);
 export const Search = icon(Search01Icon);
 export const Home = icon(Home01Icon);
 export const Songs = icon(MusicNote03Icon);

@@ -3,7 +3,7 @@ import { playContainer, playSongs, type Resource } from './musickit';
 
 export type Route =
   | { view: 'home' }
-  | { view: 'search'; term?: string }
+  | { view: 'search' }
   | { view: 'songs' }
   | { view: 'albums' }
   | { view: 'playlists' }
@@ -13,13 +13,9 @@ export type Route =
 
 interface Navigation {
   route: Route;
-  /** Changes on navigate/back but not on replace, e.g. for page-enter animations and scroll reset. */
+  /** Changes on every navigate, e.g. for page-enter animations and scroll reset. */
   pageKey: number;
-  canGoBack: boolean;
   navigate(route: Route): void;
-  /** Swap the current route in place (e.g. remembering a search term) without adding history. */
-  replace(route: Route): void;
-  back(): void;
   /** Open whatever an API resource is: albums/playlists/artists navigate, songs/stations play. */
   open(item: Resource): void;
 }
@@ -28,17 +24,9 @@ const NavigationContext = createContext<Navigation | null>(null);
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const nextKey = useRef(1);
-  const [stack, setStack] = useState<{ route: Route; key: number }[]>([{ route: { view: 'home' }, key: 0 }]);
+  const [page, setPage] = useState<{ route: Route; key: number }>({ route: { view: 'home' }, key: 0 });
 
-  const navigate = useCallback(
-    (route: Route) => setStack((s) => [...s.slice(-49), { route, key: nextKey.current++ }]),
-    [],
-  );
-  const replace = useCallback(
-    (route: Route) => setStack((s) => [...s.slice(0, -1), { route, key: s[s.length - 1].key }]),
-    [],
-  );
-  const back = useCallback(() => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)), []);
+  const navigate = useCallback((route: Route) => setPage({ route, key: nextKey.current++ }), []);
 
   const open = useCallback(
     (item: Resource) => {
@@ -50,10 +38,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     [navigate],
   );
 
-  const value = useMemo(() => {
-    const top = stack[stack.length - 1];
-    return { route: top.route, pageKey: top.key, canGoBack: stack.length > 1, navigate, replace, back, open };
-  }, [stack, navigate, replace, back, open]);
+  const value = useMemo(
+    () => ({ route: page.route, pageKey: page.key, navigate, open }),
+    [page, navigate, open],
+  );
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;
 }
 

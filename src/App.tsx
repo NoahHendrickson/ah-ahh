@@ -1,4 +1,3 @@
-import { Back } from './icons';
 import { useEffect, useRef, useState } from 'react';
 import { PlayerBar } from './components/PlayerBar';
 import { QueuePanel } from './components/QueuePanel';
@@ -98,10 +97,10 @@ function Shell() {
     window.addEventListener(PLAY_STARTED, open);
     return () => window.removeEventListener(PLAY_STARTED, open);
   }, []);
-  const { pageKey, canGoBack, back } = useNav();
+  const { pageKey } = useNav();
   const scroller = useRef<HTMLElement>(null);
 
-  // New page → start at the top (not on in-place route updates like typing a search).
+  // New page → start at the top.
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
   }, [pageKey]);
@@ -109,13 +108,9 @@ function Shell() {
   return (
     <div className={`app platform-${window.ahahh?.platform} ${queueOpen ? 'with-queue' : ''}`}>
       <Sidebar />
-      {/* Sits over the top of <main> (same grid cell) rather than inside it, so the
-          scrolling content can fade out beneath it in glass mode. */}
-      <div className="topbar drag">
-        <button className="icon-btn no-drag" title="Back" disabled={!canGoBack} onClick={back}>
-          <Back />
-        </button>
-      </div>
+      {/* Window drag strip over the top of <main> (same grid cell) rather than inside it,
+          so the scrolling content can fade out beneath it in glass mode. */}
+      <div className="topbar drag" />
       <main className="main" ref={scroller}>
         {/* Re-keyed per page so each page plays its enter animation. */}
         <div key={pageKey} className="page-enter">
@@ -134,7 +129,7 @@ function View() {
     case 'home':
       return <HomeView />;
     case 'search':
-      return <SearchView initialTerm={route.term} />;
+      return <SearchView />;
     case 'songs':
       return <SongsView />;
     case 'albums':

@@ -5,25 +5,23 @@ import { Empty, ErrorNote, Spinner } from '../components/Status';
 import { TrackList } from '../components/TrackList';
 import { useAsync } from '../hooks';
 import { api, playSongs, storefront, type Resource } from '../musickit';
-import { useNav } from '../navigation';
 
 interface SearchResults {
   results: Partial<Record<'songs' | 'albums' | 'artists' | 'playlists', { data: Resource[] }>>;
 }
 
-export function SearchView({ initialTerm = '' }: { initialTerm?: string }) {
-  const { replace } = useNav();
-  const [input, setInput] = useState(initialTerm);
-  const [term, setTerm] = useState(initialTerm);
+/** The last search, so coming back to Search shows the same results. */
+let lastTerm = '';
 
-  // Debounce typing, and remember the term so Back returns to these results.
+export function SearchView() {
+  const [input, setInput] = useState(lastTerm);
+  const [term, setTerm] = useState(lastTerm);
+
+  // Debounce typing.
   useEffect(() => {
-    const t = setTimeout(() => {
-      setTerm(input.trim());
-      replace({ view: 'search', term: input.trim() });
-    }, 350);
+    const t = setTimeout(() => setTerm((lastTerm = input.trim())), 350);
     return () => clearTimeout(t);
-  }, [input, replace]);
+  }, [input]);
 
   const { data, error, loading } = useAsync(async () => {
     if (!term) return null;
