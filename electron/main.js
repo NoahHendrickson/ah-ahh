@@ -47,10 +47,13 @@ function isAppUrl(url) {
   return url.startsWith(ORIGIN) || (DEV_URL && url.startsWith(DEV_URL));
 }
 
-/** Turns the frosted-glass window background on/off (the page's CSS supplies the tint on top). */
+/**
+ * Turns the frosted-glass window background on/off (the page's CSS supplies the tint on top).
+ * Windows keeps the acrylic it was created with: Electron only makes the page see-through for
+ * materials set at creation, so there the glass setting just swaps the page's solid background.
+ */
 function applyGlass(window, enabled) {
   if (process.platform === 'darwin') window.setVibrancy(enabled ? 'under-window' : null);
-  else if (process.platform === 'win32') window.setBackgroundMaterial(enabled ? 'acrylic' : 'none');
 }
 
 function createWindow() {
@@ -73,7 +76,10 @@ function createWindow() {
           // Required for a see-through background; without it old frames smear ("ghosting").
           transparent: canGlass,
         }
-      : { titleBarOverlay: { color: canGlass ? '#00000000' : '#141418', symbolColor: '#e8e8ea', height: 48 } }),
+      : {
+          titleBarOverlay: { color: canGlass ? '#00000000' : '#141418', symbolColor: '#e8e8ea', height: 48 },
+          ...(canGlass && { backgroundMaterial: 'acrylic' }),
+        }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
