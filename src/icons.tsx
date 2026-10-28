@@ -5,6 +5,7 @@ import {
   ArrowReloadHorizontalIcon,
   Cancel01Icon,
   Copy01Icon,
+  FavouriteIcon,
   Home01Icon,
   Key01Icon,
   LinkSquare02Icon,
@@ -13,6 +14,7 @@ import {
   NextIcon,
   PauseIcon,
   PlayIcon,
+  PlayListAddIcon,
   Playlist02Icon,
   Playlist03Icon,
   PreviousIcon,
@@ -72,6 +74,8 @@ export const Repeat = icon(ArrowReloadHorizontalIcon);
 export const RepeatOne = icon(RepeatOne01Icon);
 export const Queue = icon(Playlist03Icon);
 export const PlayNext = icon(ListPlusIcon);
+export const Favorite = icon(FavouriteIcon);
+export const AddToPlaylist = icon(PlayListAddIcon);
 export const VolumeHigh = icon(VolumeHighIcon);
 export const VolumeLow = icon(VolumeLowIcon);
 export const VolumeMute = icon(VolumeMute02Icon);

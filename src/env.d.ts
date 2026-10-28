@@ -30,7 +30,21 @@ type AhAhhRemoteCommand =
   | { action: 'play' | 'pause' | 'toggle' | 'next' | 'previous' }
   | { action: 'seek' | 'volume'; value: number }
   | { action: 'shuffle'; value: boolean }
-  | { action: 'repeat'; value: 0 | 1 | 2 };
+  | { action: 'repeat'; value: 0 | 1 | 2 }
+  | { action: 'playItem'; value: { type: string; id: string; startWith: number; shuffle?: boolean } }
+  | { action: 'playSongs'; value: { ids: string[]; startWith: number; shuffle?: boolean } }
+  | { action: 'playNext'; value: { id: string; type: 'songs' | 'library-songs' } }
+  | { action: 'jumpTo'; value: number }
+  | { action: 'favorite'; value: boolean };
+
+/** Something the phone remote asked for; `path` was already checked by the main process. */
+type AhAhhRemoteRequest = { kind: 'queue' } | { kind: 'music'; path: string; params?: Record<string, string | number | boolean> };
+
+/** The HTTP status and JSON body the phone gets back. */
+interface AhAhhRemoteReply {
+  status: number;
+  body: unknown;
+}
 
 type AhAhhUpdateStatus = 'idle' | 'latest' | 'downloading' | 'ready' | 'error';
 
@@ -56,6 +70,8 @@ interface AhAhhBridge {
   resetRemotePairing(): Promise<AhAhhRemotePairing>;
   /** Commands from the phone remote. Returns an unsubscribe function. */
   onRemoteCommand(callback: (command: AhAhhRemoteCommand) => void): () => void;
+  /** Requests from the phone remote. Returns an unsubscribe function. */
+  onRemoteRequest(handler: (request: AhAhhRemoteRequest) => Promise<AhAhhRemoteReply>): () => void;
 }
 
 interface Window {

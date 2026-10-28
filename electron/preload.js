@@ -29,5 +29,11 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
       ipcRenderer.on('remote:command', listener);
       return () => ipcRenderer.removeListener('remote:command', listener);
     },
+    // Requests from the phone remote that need an answer; `handler` resolves { status, body }.
+    onRemoteRequest: (handler) => {
+      const listener = async (_event, id, request) => ipcRenderer.send('remote:reply', id, await handler(request));
+      ipcRenderer.on('remote:request', listener);
+      return () => ipcRenderer.removeListener('remote:request', listener);
+    },
   });
 }

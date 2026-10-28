@@ -5,6 +5,8 @@ struct RemoteView: View {
     @AppStorage("keepAwake") private var keepAwake = true
     @State private var seekDrag: Double? // fraction, while dragging
     @State private var volumeDrag: Double?
+    @State private var showQueue = false
+    @Environment(\.dismiss) private var dismiss
 
     private var hasItem: Bool { client.state.title != nil }
 
@@ -27,12 +29,28 @@ struct RemoteView: View {
         .padding(.bottom, 12)
         .foregroundStyle(.white)
         .background { backdrop }
+        .sheet(isPresented: $showQueue) {
+            QueueView()
+                .presentationDetents([.medium, .large])
+                .presentationBackground(Theme.bg)
+        }
     }
+
+    /// Browsing, Up Next and favorites need a PC new enough to report its queue.
+    private var canBrowse: Bool { client.state.queueRevision != nil }
 
     // MARK: Sections
 
     private var header: some View {
         HStack(spacing: 8) {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 36, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Close")
+            .foregroundStyle(Theme.text2)
             Circle()
                 .fill(client.connected ? Color.green : Color.orange)
                 .frame(width: 8, height: 8)
@@ -45,6 +63,16 @@ struct RemoteView: View {
                     .foregroundStyle(Theme.text3)
             }
             Spacer()
+            if canBrowse {
+                Button { showQueue = true } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .foregroundStyle(Theme.text2)
+                .accessibilityLabel("Up Next")
+            }
             Menu {
                 Toggle("Keep screen awake", systemImage: "sun.max", isOn: $keepAwake)
                 Button("Forget this PC", systemImage: "xmark.circle", role: .destructive) {
@@ -84,6 +112,28 @@ struct RemoteView: View {
     }
 
     private var meta: some View {
+        HStack(spacing: 12) {
+            metaText
+            if canBrowse && hasItem {
+                let favorite = client.state.favorite == true
+                Button {
+                    haptic()
+                    client.setFavorite(!favorite)
+                } label: {
+                    Image(systemName: favorite ? "heart.fill" : "heart")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(favorite ? .white : Theme.text2)
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle())
+                .accessibilityLabel(favorite ? "Unfavorite" : "Favorite")
+            }
+        }
+    }
+
+    private var metaText: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(client.state.title ?? (client.connected ? "Nothing playing" : "Connecting…"))
                 .font(.title2.weight(.bold))
@@ -174,6 +224,72 @@ struct RemoteView: View {
             LinearGradient(colors: [Theme.bg.opacity(0.2), Theme.bg.opacity(0.85)], startPoint: .top, endPoint: .bottom)
         }
         .ignoresSafeArea()
+    }
+}
+
+// MARK: Up Next
+
+/// The PC's queue: the current song and what's next. Tap a song to jump to it.
+struct QueueView: View {
+    @Environment(RemoteClient.self) private var client
+    @State private var phase: Phase<Queue> = .loading
+
+    var body: some View {
+        NavigationStack {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    PhaseView(phase, retry: load) { queue in
+                        LazyVStack(spacing: 0) {
+                            ForEach(queue.items, id: \.index) { item in
+                                row(item, current: item.index == queue.position)
+                                    .id(item.index)
+                            }
+                            if queue.items.isEmpty { EmptyNote("Nothing in the queue.") }
+                        }
+                        .onAppear { proxy.scrollTo(queue.position, anchor: .top) }
+                    }
+                }
+            }
+            .page()
+            .navigationTitle("Up Next")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        // Reloads whenever the PC says the queue changed.
+        .task(id: client.state.queueRevision) { await load() }
+    }
+
+    private func row(_ item: Queue.Item, current: Bool) -> some View {
+        Button { client.jumpTo(item.index) } label: {
+            HStack(spacing: 12) {
+                ArtworkImage(url: item.artwork, points: 44, radius: 4)
+                    .frame(width: 44, height: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title).foregroundStyle(.white)
+                    Text(item.artist).font(.subheadline).foregroundStyle(Theme.text2)
+                }
+                .lineLimit(1)
+                Spacer()
+                if current {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 15, weight: .semibold))
+                        .symbolEffect(.variableColor.iterative, isActive: client.state.playing)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 6)
+            .background(current ? Theme.surface : .clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(RowStyle())
+    }
+
+    private func load() async {
+        do {
+            phase = .loaded(try await client.queue())
+        } catch is CancellationError {
+        } catch {
+            if phase.value == nil { phase = .failed(error.localizedDescription) }
+        }
     }
 }
 

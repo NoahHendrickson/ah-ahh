@@ -138,6 +138,27 @@ ipcMain.on('nowplaying', (_event, state) => {
   remote?.publish(state);
 });
 
+// Phone remote requests the player answers (the queue, Apple Music API calls), matched up by ID.
+const pendingRequests = new Map();
+let lastRequestId = 0;
+function askPlayer(request) {
+  if (!win) return Promise.resolve({ status: 503, body: { error: 'player unavailable' } });
+  const id = ++lastRequestId;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => reply({ status: 504, body: { error: 'player timed out' } }), 15_000);
+    const reply = (answer) => {
+      clearTimeout(timer);
+      pendingRequests.delete(id);
+      resolve(answer);
+    };
+    pendingRequests.set(id, reply);
+    win.webContents.send('remote:request', id, request);
+  });
+}
+ipcMain.on('remote:reply', (event, id, answer) => {
+  if (event.sender === win?.webContents) pendingRequests.get(id)?.(answer);
+});
+
 // Phone remote. Starts/stops are chained so quick toggles can't overlap.
 const tokenFile = () => path.join(app.getPath('userData'), 'remote.json');
 let remoteToken = null;
@@ -159,6 +180,7 @@ function setRemote(enabled) {
           win.webContents.send('remote:command', cmd);
           return true;
         },
+        request: askPlayer,
       });
     } catch (err) {
       remoteError =

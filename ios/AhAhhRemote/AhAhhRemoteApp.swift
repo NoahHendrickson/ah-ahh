@@ -6,13 +6,18 @@ struct AhAhhRemoteApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("keepAwake") private var keepAwake = true
 
+    init() {
+        // Artwork is fetched straight from Apple's CDN; keep plenty of it on disk.
+        URLCache.shared = URLCache(memoryCapacity: 16 << 20, diskCapacity: 200 << 20)
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
                 if client.pairing == nil {
                     PairingView()
                 } else {
-                    RemoteView()
+                    MainView()
                 }
             }
             .environment(client)

@@ -1,5 +1,21 @@
 import { createContext, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { mk, nowPlayingIds, ShuffleMode, type MediaItem, type MusicKitInstance } from './musickit';
+import {
+  errorMessage,
+  FAVORITE_CHANGED,
+  isFavorite,
+  isNotFound,
+  mk,
+  nowPlayingIds,
+  playContainer,
+  playNext,
+  playSongs,
+  setFavorite,
+  ShuffleMode,
+  songRef,
+  storefront,
+  type MediaItem,
+  type MusicKitInstance,
+} from './musickit';
 
 /** Player bar state. Track rows, the queue and volume have their own hooks below so they don't re-render on every event. */
 export interface PlayerState {
@@ -184,9 +200,52 @@ export function useSmoothPlaybackTime(isPlaying: boolean): number {
   return anchor.current.time + Math.min((performance.now() - anchor.current.at) / 1000, 1);
 }
 
+/** Counts queue changes (a burst counts once), so the phone remote knows when to refetch the queue. */
+function useQueueRevision(): number {
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    let pending: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = subscribeQueueEvents(() => {
+      pending ??= setTimeout(() => {
+        pending = undefined;
+        setRevision((n) => n + 1);
+      }, 100);
+    });
+    return () => {
+      clearTimeout(pending);
+      unsubscribe();
+    };
+  }, []);
+  return revision;
+}
+
+/** Whether the playing song is a favorite, for the phone remote; null while unknown or with nothing playing. */
+function useFavorite(item?: MediaItem): boolean | null {
+  // Kept with the song's ID so a new song never shows the previous one's value.
+  const [favorite, setFavoriteState] = useState<{ id: string; value: boolean }>();
+  useEffect(() => {
+    if (!item) return;
+    const song = songRef(item);
+    let live = true;
+    isFavorite(song).then((value) => live && setFavoriteState({ id: item.id, value }), () => {});
+    const onChange = (event: Event) => {
+      const { song: changed, favorite } = (event as CustomEvent).detail;
+      if (changed.id === song.id) setFavoriteState({ id: item.id, value: favorite });
+    };
+    window.addEventListener(FAVORITE_CHANGED, onChange);
+    return () => {
+      live = false;
+      window.removeEventListener(FAVORITE_CHANGED, onChange);
+    };
+  }, [item?.id]);
+  return favorite && favorite.id === item?.id ? favorite.value : null;
+}
+
 /** Pushes now-playing info to the main process, which relays it to the OBS overlay and the phone remote. */
 function useNowPlayingBroadcast(state: PlayerState) {
   const { item, isPlaying, duration, shuffle, repeat } = state;
+  const queueRevision = useQueueRevision();
+  const favorite = useFavorite(item);
 
   useEffect(() => {
     const music = mk();
@@ -208,6 +267,8 @@ function useNowPlayingBroadcast(state: PlayerState) {
         volume: music.volume,
         shuffle,
         repeat,
+        queueRevision,
+        favorite,
       });
     };
 
@@ -234,11 +295,39 @@ function useNowPlayingBroadcast(state: PlayerState) {
       music.removeEventListener('playbackTimeDidChange', onTime);
       music.removeEventListener('playbackVolumeDidChange', onVolume);
     };
-  }, [item, isPlaying, duration, shuffle, repeat]);
+  }, [item, isPlaying, duration, shuffle, repeat, queueRevision, favorite]);
 }
 
-/** Runs commands from the phone remote, relayed by the main process. */
+/** The phone remote's view of the queue: the current song and up to 100 after it. */
+function remoteQueue() {
+  const { items = [], position = -1 } = mk().queue ?? {};
+  if (position < 0 || position >= items.length) return { position: -1, items: [] };
+  return {
+    position,
+    items: items.slice(position, position + 101).map((item, i) => ({
+      index: position + i,
+      id: item.id,
+      title: itemTitle(item),
+      artist: itemArtist(item),
+      artwork: itemArtwork(item, 120) ?? null,
+    })),
+  };
+}
+
+/** Answers the phone remote: the queue, or a read-only Apple Music API call (the main process vetted the path). */
+async function answerRemote(request: AhAhhRemoteRequest): Promise<AhAhhRemoteReply> {
+  try {
+    if (request.kind === 'queue') return { status: 200, body: remoteQueue() };
+    const response = await mk().api.music(request.path.replace('{storefront}', storefront()), request.params ?? {});
+    return { status: 200, body: response.data };
+  } catch (err) {
+    return isNotFound(err) ? { status: 404, body: { error: 'not found' } } : { status: 502, body: { error: errorMessage(err) } };
+  }
+}
+
+/** Runs commands from the phone remote, relayed by the main process, and answers its requests. */
 function useRemoteCommands() {
+  useEffect(() => window.ahahh?.onRemoteRequest(answerRemote), []);
   useEffect(
     () =>
       window.ahahh?.onRemoteCommand((command) => {
@@ -271,6 +360,26 @@ function useRemoteCommands() {
             break;
           case 'repeat':
             music.repeatMode = command.value;
+            break;
+          case 'playItem': {
+            const { type, id, startWith, shuffle } = command.value;
+            if (type === 'songs' || type === 'library-songs') void playSongs([{ id, type }], 0, shuffle);
+            else void playContainer({ id, type }, startWith, shuffle);
+            break;
+          }
+          case 'playSongs': {
+            const { ids, startWith, shuffle } = command.value;
+            void playSongs(ids.map((id) => ({ id, type: 'songs' })), startWith, shuffle);
+            break;
+          }
+          case 'playNext':
+            void playNext(command.value);
+            break;
+          case 'jumpTo':
+            void music.changeToMediaAtIndex(command.value);
+            break;
+          case 'favorite':
+            if (music.nowPlayingItem) void setFavorite(songRef(music.nowPlayingItem), command.value);
             break;
         }
       }),

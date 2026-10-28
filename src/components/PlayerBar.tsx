@@ -1,16 +1,12 @@
 import { Next, Pause, Play, Previous, Queue, Repeat, RepeatOne, Shuffle, VolumeHigh, VolumeLow, VolumeMute } from '../icons';
 import { useState } from 'react';
-import { formatTime, mk, RepeatMode, ShuffleMode } from '../musickit';
+import { cycleRepeat, formatTime, mk, RepeatMode, toggleShuffle } from '../musickit';
 import { itemArtist, itemArtwork, itemTitle, usePlayer, useSmoothPlaybackTime, useVolume } from '../player';
 
 export function PlayerBar({ queueOpen, onToggleQueue }: { queueOpen: boolean; onToggleQueue(): void }) {
   const { item, isPlaying, shuffle, repeat } = usePlayer();
   const music = mk();
   const art = itemArtwork(item, 112);
-
-  const cycleRepeat = () => {
-    music.repeatMode = repeat === RepeatMode.none ? RepeatMode.all : repeat === RepeatMode.all ? RepeatMode.one : RepeatMode.none;
-  };
 
   return (
     <footer className="player">
@@ -33,11 +29,7 @@ export function PlayerBar({ queueOpen, onToggleQueue }: { queueOpen: boolean; on
 
       <div className="player-center">
         <div className="player-controls">
-          <button
-            className={`icon-btn ${shuffle ? 'active' : ''}`}
-            title="Shuffle"
-            onClick={() => (music.shuffleMode = shuffle ? ShuffleMode.off : ShuffleMode.songs)}
-          >
+          <button className={`icon-btn ${shuffle ? 'active' : ''}`} title="Shuffle" onClick={toggleShuffle}>
             <Shuffle />
           </button>
           <button className="icon-btn" title="Previous" disabled={!item} onClick={() => void music.skipToPreviousItem()}>

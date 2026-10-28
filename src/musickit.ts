@@ -35,6 +35,8 @@ export interface Resource {
     description?: { standard?: string; short?: string };
     editorialNotes?: { standard?: string; short?: string };
     url?: string;
+    /** Library playlists: whether the user can add songs to it. */
+    canEdit?: boolean;
   };
   relationships?: Record<string, { data: Resource[]; next?: string }>;
   views?: Record<string, { data: Resource[]; attributes?: { title?: string } }>;
@@ -181,7 +183,7 @@ export async function all(path: string, params: Record<string, unknown> = {}, ma
   return items;
 }
 
-function isNotFound(err: unknown): boolean {
+export function isNotFound(err: unknown): boolean {
   const e = err as { errorCode?: string; status?: number; data?: { status?: number } };
   return e?.status === 404 || e?.data?.status === 404 || e?.errorCode === 'NOT_FOUND';
 }
@@ -193,7 +195,57 @@ export async function addToLibrary(item: Resource): Promise<void> {
   await mk().api.music('/v1/me/library', { [`ids[${kind}]`]: item.id }, { fetchOptions: { method: 'POST' } });
 }
 
+/** How the API refers to a playing song: by catalog ID when it has one, else as a library song. */
+export interface SongRef {
+  id: string;
+  type: 'songs' | 'library-songs';
+}
+
+export function songRef(item: MediaItem): SongRef {
+  const catalogId = item.playParams?.catalogId ?? (item.playParams?.isLibrary ? undefined : item.id);
+  return catalogId ? { id: catalogId, type: 'songs' } : { id: item.id, type: 'library-songs' };
+}
+
+/** Favorites are "love" ratings: they show up in the user's Favorite Songs. */
+export async function isFavorite(song: SongRef): Promise<boolean> {
+  try {
+    const response = await mk().api.music(`/v1/me/ratings/${song.type}/${song.id}`);
+    return response.data.data[0]?.attributes?.value === 1;
+  } catch (err) {
+    if (isNotFound(err)) return false;
+    throw err;
+  }
+}
+
+/** Window event fired after a song is favorited or unfavorited (from here or the phone); detail is { song, favorite }. */
+export const FAVORITE_CHANGED = 'ahahh:favorite-changed';
+
+export async function setFavorite(song: SongRef, favorite: boolean): Promise<void> {
+  const fetchOptions = favorite
+    ? { method: 'PUT', body: JSON.stringify({ type: 'rating', attributes: { value: 1 } }) }
+    : { method: 'DELETE' };
+  await mk().api.music(`/v1/me/ratings/${song.type}/${song.id}`, {}, { fetchOptions });
+  window.dispatchEvent(new CustomEvent(FAVORITE_CHANGED, { detail: { song, favorite } }));
+}
+
+export async function addToPlaylist(playlist: Resource, song: SongRef): Promise<void> {
+  await mk().api.music(`/v1/me/library/playlists/${playlist.id}/tracks`, {}, {
+    fetchOptions: { method: 'POST', body: JSON.stringify({ data: [song] }) },
+  });
+}
+
 // ---------- Playback helpers ----------
+
+export function toggleShuffle(): void {
+  const music = mk();
+  music.shuffleMode = music.shuffleMode === ShuffleMode.off ? ShuffleMode.songs : ShuffleMode.off;
+}
+
+/** Off → all → one → off, like Apple Music. */
+export function cycleRepeat(): void {
+  const music = mk();
+  music.repeatMode = music.repeatMode === RepeatMode.none ? RepeatMode.all : music.repeatMode === RepeatMode.all ? RepeatMode.one : RepeatMode.none;
+}
 
 /** Queue key MusicKit expects for a container resource type. */
 function queueKey(type: string): string | null {

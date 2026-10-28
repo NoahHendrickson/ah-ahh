@@ -14,6 +14,10 @@ struct RemoteState: Decodable {
     var volume = 1.0
     var shuffle = false
     var `repeat` = 0 // 0 none, 1 one, 2 all
+    /// Changes whenever the PC's queue changes. nil: an older PC without browsing support.
+    var queueRevision: Int?
+    /// Whether the current song is a favorite; nil when unknown.
+    var favorite: Bool?
 
     init() {}
 
@@ -29,10 +33,12 @@ struct RemoteState: Decodable {
         volume = (try? c.decode(Double.self, forKey: .volume)) ?? 1
         shuffle = (try? c.decode(Bool.self, forKey: .shuffle)) ?? false
         `repeat` = Int((try? c.decode(Double.self, forKey: .repeat)) ?? 0)
+        queueRevision = (try? c.decode(Double.self, forKey: .queueRevision)).map { Int($0) }
+        favorite = try? c.decode(Bool.self, forKey: .favorite)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case playing, title, artist, album, artwork, durationMs, positionMs, volume, shuffle, `repeat`
+        case playing, title, artist, album, artwork, durationMs, positionMs, volume, shuffle, `repeat`, queueRevision, favorite
     }
 }
 
@@ -66,6 +72,9 @@ final class RemoteClient {
     private var lastCommand: Task<Void, Never>?
     private var lastVolumeSend = Date.distantPast
     private var artworkURL: String?
+    @ObservationIgnored private var preview: (oldTitle: String?, until: Date)?
+    /// Apple Music responses by path + params, for the session (so going back is instant).
+    @ObservationIgnored private var cache: [String: Any] = [:]
 
     private static let defaultsKey = "pairing"
 
@@ -128,6 +137,61 @@ final class RemoteClient {
         send("repeat", state.repeat)
     }
 
+    func setFavorite(_ on: Bool) {
+        state.favorite = on
+        send("favorite", on)
+    }
+
+    func jumpTo(_ index: Int) {
+        haptic()
+        send("jumpTo", index)
+    }
+
+    /// Plays an album/playlist/station from track `startWith`, or a single song. `preview` is the song
+    /// that will start, shown right away instead of waiting for the PC.
+    func play(_ item: Resource, startWith: Int = 0, shuffle: Bool? = nil, preview: Resource? = nil) {
+        var value: [String: Any] = ["type": item.type, "id": item.id, "startWith": startWith]
+        if let shuffle { value["shuffle"] = shuffle }
+        haptic()
+        showPreview(preview ?? (item.isSong ? item : nil))
+        send("playItem", value)
+    }
+
+    /// Plays a list that isn't a container (search results, library songs), starting at `songs[startWith]`.
+    func play(songs: [Resource], startWith: Int = 0, shuffle: Bool? = nil) {
+        let playable = songs.indices.filter { songs[$0].isPlayable }.prefix(500)
+        guard !playable.isEmpty else { return }
+        var value: [String: Any] = [
+            "ids": playable.map { songs[$0].id },
+            "startWith": playable.firstIndex(of: startWith).map { $0 - playable.startIndex } ?? 0,
+        ]
+        if let shuffle { value["shuffle"] = shuffle }
+        haptic()
+        if shuffle != true { showPreview(songs.indices.contains(startWith) ? songs[startWith] : nil) }
+        send("playSongs", value)
+    }
+
+    func playNext(_ song: Resource) {
+        haptic()
+        send("playNext", ["id": song.id, "type": song.type])
+    }
+
+    /// Shows `song` as now playing until the PC reports the switch (or a few seconds pass).
+    private func showPreview(_ song: Resource?) {
+        guard let song, let name = song.attributes.name else { return }
+        preview = (state.title, Date().addingTimeInterval(3))
+        state.title = name
+        state.artist = song.attributes.artistName ?? ""
+        state.album = song.attributes.albumName ?? ""
+        state.durationMs = song.attributes.durationInMillis ?? 0
+        state.positionMs = 0
+        state.playing = true
+        state.favorite = nil
+        stateTime = Date()
+        state.artwork = song.attributes.artwork?.url(600) // the size the PC reports, so it isn't fetched twice
+        if state.artwork != artworkURL { loadArtwork(state.artwork) }
+    }
+
     private func send(_ action: String, _ value: Any? = nil) {
         guard let p = pairing else { return }
         var body: [String: Any] = ["action": action]
@@ -144,6 +208,7 @@ final class RemoteClient {
             if status == 401 {
                 forget(message: "ah ahh on your PC reset its pairing code. Scan the new one.")
             } else if !(200..<300).contains(status), pairing != nil {
+                preview = nil
                 reconnect()
             }
         }
@@ -231,10 +296,15 @@ final class RemoteClient {
     }
 
     private func apply(_ s: RemoteState) {
+        connected = true
+        if let p = preview {
+            // Still the song from before a play tap: keep showing the new one.
+            if s.title == p.oldTitle, Date() < p.until { return }
+            preview = nil
+        }
         if s.artwork != artworkURL { loadArtwork(s.artwork) }
         state = s
         stateTime = Date()
-        connected = true
     }
 
     private func loadArtwork(_ string: String?) {
@@ -286,6 +356,7 @@ final class RemoteClient {
                 pairing = candidate
                 pairing?.host = host
                 state = RemoteState()
+                cache = [:]
                 loadArtwork(nil)
                 save()
                 startStream()
@@ -302,6 +373,7 @@ final class RemoteClient {
         stopStream()
         pairing = nil
         state = RemoteState()
+        cache = [:]
         loadArtwork(nil)
         pairingError = message
         UserDefaults.standard.removeObject(forKey: Self.defaultsKey)
@@ -309,6 +381,61 @@ final class RemoteClient {
 
     private func save() {
         UserDefaults.standard.set(try? JSONEncoder().encode(pairing), forKey: Self.defaultsKey)
+    }
+
+    // MARK: Browsing (Apple Music API, proxied by the PC)
+
+    /// A read-only Apple Music API request made by the PC with its signed-in session. `path` may
+    /// contain `{storefront}` or be a `next` href. Cached for the session unless `refresh`.
+    func music<T: Decodable & Sendable>(_ path: String, params: [String: String] = [:], refresh: Bool = false) async throws -> T {
+        let key = path + "?" + params.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
+        if !refresh, let hit = cache[key], let value = hit as? T { return value }
+        let body: [String: Any] = params.isEmpty ? ["path": path] : ["path": path, "params": params]
+        let value: T = try await fetch("/v1/music", body: body)
+        cache[key] = value
+        return value
+    }
+
+    /// One page of a collection; Apple answers 404 for empty ones (e.g. no recently played).
+    func page(_ path: String, params: [String: String] = [:], refresh: Bool = false) async throws -> Page {
+        do {
+            return try await music(path, params: params, refresh: refresh)
+        } catch let error as BrowseError where error.status == 404 {
+            return Page()
+        }
+    }
+
+    func queue() async throws -> Queue {
+        try await fetch("/v1/queue")
+    }
+
+    private func fetch<T: Decodable>(_ path: String, body: [String: Any]? = nil) async throws -> T {
+        guard let p = pairing else { throw BrowseError(status: 0, message: "Not paired.") }
+        var req = request(p, p.host, path, timeout: 15)
+        if let body {
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        }
+        let data: Data, response: URLResponse
+        do {
+            (data, response) = try await session.data(for: req)
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            reconnect()
+            throw BrowseError(status: 0, message: "Couldn't reach \(p.name).")
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200 else {
+            if status == 401 { forget(message: "ah ahh on your PC reset its pairing code. Scan the new one.") }
+            let detail = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
+            throw BrowseError(status: status, detail: detail)
+        }
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            throw BrowseError(status: status, message: "Your PC sent something unexpected.")
+        }
     }
 
     // MARK: HTTP
@@ -345,6 +472,29 @@ final class RemoteClient {
         req.setValue("Bearer \(p.token)", forHTTPHeaderField: "Authorization")
         return req
     }
+}
+
+struct BrowseError: LocalizedError {
+    let status: Int
+    let message: String
+
+    init(status: Int, message: String) {
+        self.status = status
+        self.message = message
+    }
+
+    init(status: Int, detail: String?) {
+        self.status = status
+        switch status {
+        case 400: message = "ah ahh on your PC needs an update to browse from your phone."
+        case 404: message = "This isn't available."
+        case 503: message = "ah ahh on your PC isn't ready. Make sure it's open and signed in."
+        case 504: message = "Apple Music took too long to answer."
+        default: message = "Apple Music had a problem" + (detail.map { " (\($0))." } ?? ".")
+        }
+    }
+
+    var errorDescription: String? { message }
 }
 
 private func endpoint(_ host: String, _ port: Int, _ path: String) -> URL? {

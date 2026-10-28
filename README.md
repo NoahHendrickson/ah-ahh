@@ -113,6 +113,10 @@ app on the same Wi-Fi. It's off by default: turn on **Settings → Phone remote*
 the QR code with the phone app. The first time, Windows Firewall asks about ah ahh: allow
 it on **private** networks.
 
+The phone can also browse your Apple Music (search, library, home) and start playback, see the
+queue, and favorite the playing song. It never talks to Apple itself: ah ahh makes those read-only
+Apple Music API calls for it, limited to the catalog and your library, recommendations and history.
+
 While it's on, ah ahh listens on port `10771` on your local network (the app's own server
 on `10770` stays local-only). Every request needs the pairing token from the QR code;
 **Reset pairing** makes a new one and disconnects every paired phone.
@@ -148,7 +152,9 @@ a real web origin. The port is fixed because Apple Music keeps your sign-in per 
 
 The phone app lives in `ios/` (SwiftUI, no dependencies, iOS 17+) and is installed through
 **TestFlight**: get the TestFlight app on the iPhone, accept the invite, and tap **Install**.
-TestFlight then keeps it updated.
+TestFlight then keeps it updated. It has Home, Search and Library tabs like the desktop app (tap
+any song, album or playlist to play it on the PC), a mini player, and a full Now Playing screen
+with Up Next and favorites.
 
 To publish a new build:
 
