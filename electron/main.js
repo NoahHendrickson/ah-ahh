@@ -238,6 +238,7 @@ const logUpdate =
     }
   };
 autoUpdater.logger = { info: logUpdate('info'), warn: logUpdate('warn'), error: logUpdate('error'), debug() {} };
+autoUpdater.on('checking-for-update', () => setUpdateStatus('checking'));
 autoUpdater.on('update-available', () => setUpdateStatus('downloading'));
 autoUpdater.on('update-not-available', () => setUpdateStatus('latest'));
 autoUpdater.on('update-downloaded', () => setUpdateStatus('ready'));
@@ -246,9 +247,10 @@ autoUpdater.on('error', (err) => {
   if (updateStatus !== 'ready') setUpdateStatus('error');
 });
 function checkForUpdates() {
-  if (app.isPackaged && updateStatus !== 'ready') autoUpdater.checkForUpdates().catch(() => {});
+  if (app.isPackaged && ['idle', 'latest', 'error'].includes(updateStatus)) autoUpdater.checkForUpdates().catch(() => {});
 }
 ipcMain.handle('update:status', () => updateStatus);
+ipcMain.handle('update:check', () => checkForUpdates());
 // Silent (no installer wizard), then reopen ah ahh once it's installed.
 ipcMain.handle('update:install', () => autoUpdater.quitAndInstall(true, true));
 

@@ -20,6 +20,7 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
       ipcRenderer.on('update:status', listener);
       return () => ipcRenderer.removeListener('update:status', listener);
     },
+    checkForUpdate: () => ipcRenderer.invoke('update:check'),
     installUpdate: () => ipcRenderer.invoke('update:install'),
     getRemotePairing: () => ipcRenderer.invoke('remote:pairing'),
     setRemoteEnabled: (enabled) => ipcRenderer.invoke('remote:set-enabled', enabled),
