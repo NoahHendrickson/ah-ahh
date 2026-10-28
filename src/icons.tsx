@@ -4,6 +4,7 @@ import {
   ArrowReloadHorizontalIcon,
   Cancel01Icon,
   Copy01Icon,
+  DragDropVerticalIcon,
   FavouriteIcon,
   Home01Icon,
   Key01Icon,
@@ -83,6 +84,7 @@ export const Note = icon(MusicNote03Icon);
 export const Add = icon(Add01Icon);
 export const Check = icon(Tick02Icon);
 export const Close = icon(Cancel01Icon);
+export const Grip = icon(DragDropVerticalIcon, true);
 export const Copy = icon(Copy01Icon);
 export const ExternalLink = icon(LinkSquare02Icon);
 export const Upload = icon(Upload01Icon);
