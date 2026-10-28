@@ -263,14 +263,27 @@ function queueKey(type: string): string | null {
 /** Window event fired when the user starts playing something new (not auto-advance to the next song). */
 export const PLAY_STARTED = 'ahahh:play-started';
 
+/**
+ * With shuffle on, MusicKit shuffles a new queue before applying `startWith`, so it would start on a
+ * random song. Queue in order instead, then shuffle: that keeps the chosen song first.
+ */
+async function startQueue(options: Record<string, unknown>, shuffle?: boolean): Promise<void> {
+  const music = mk();
+  const shuffled = shuffle ?? music.shuffleMode !== ShuffleMode.off;
+  music.shuffleMode = ShuffleMode.off;
+  try {
+    await music.setQueue({ ...options, startPlaying: true });
+    window.dispatchEvent(new Event(PLAY_STARTED));
+  } finally {
+    if (shuffled) music.shuffleMode = ShuffleMode.songs;
+  }
+}
+
 /** `shuffle` undefined keeps the user's current shuffle setting (e.g. clicking a single track). */
 export async function playContainer(container: Resource, startWith = 0, shuffle?: boolean): Promise<void> {
   const key = queueKey(container.type);
   if (!key) return;
-  const music = mk();
-  await music.setQueue({ [key]: container.id, startWith, startPlaying: true });
-  window.dispatchEvent(new Event(PLAY_STARTED));
-  if (shuffle !== undefined) music.shuffleMode = shuffle ? ShuffleMode.songs : ShuffleMode.off;
+  await startQueue({ [key]: container.id, startWith }, shuffle);
 }
 
 /** Songs queued up front; the rest are appended once playback has started (MusicKit loads each one). */
@@ -280,9 +293,7 @@ export async function playSongs(songs: Resource[], startWith = 0, shuffle?: bool
   const music = mk();
   const ids = songs.map((s) => s.id);
   const split = Math.max(FIRST_CHUNK, startWith + 1);
-  await music.setQueue({ songs: ids.slice(0, split), startWith, startPlaying: true });
-  window.dispatchEvent(new Event(PLAY_STARTED));
-  if (shuffle !== undefined) music.shuffleMode = shuffle ? ShuffleMode.songs : ShuffleMode.off;
+  await startQueue({ songs: ids.slice(0, split), startWith }, shuffle);
   const rest = ids.slice(split);
   if (rest.length) void music.playLater({ songs: rest }).catch((err) => console.warn('Could not queue the remaining songs:', err));
 }
