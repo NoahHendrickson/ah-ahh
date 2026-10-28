@@ -1,7 +1,7 @@
 {
   "name": "ah-ahh",
   "productName": "ah ahh",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "A lightweight Apple Music player that plays nice with game capture.",
   "private": true,
   "main": "electron/main.js",
