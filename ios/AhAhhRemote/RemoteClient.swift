@@ -147,6 +147,15 @@ final class RemoteClient {
         send("jumpTo", index)
     }
 
+    /// Queue edits use absolute queue indexes; `to` is where the song ends up.
+    func removeFromQueue(_ index: Int) {
+        send("removeFromQueue", index)
+    }
+
+    func moveInQueue(from: Int, to: Int) {
+        send("moveInQueue", ["from": from, "to": to])
+    }
+
     /// Plays an album/playlist/station from track `startWith`, or a single song. `preview` is the song
     /// that will start, shown right away instead of waiting for the PC.
     func play(_ item: Resource, startWith: Int = 0, shuffle: Bool? = nil, preview: Resource? = nil) {

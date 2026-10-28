@@ -5,10 +5,12 @@ import {
   isFavorite,
   isNotFound,
   mk,
+  moveInQueue,
   nowPlayingIds,
   playContainer,
   playNext,
   playSongs,
+  removeFromQueue,
   setFavorite,
   ShuffleMode,
   songRef,
@@ -377,6 +379,12 @@ function useRemoteCommands() {
             break;
           case 'jumpTo':
             void music.changeToMediaAtIndex(command.value);
+            break;
+          case 'removeFromQueue':
+            removeFromQueue(command.value);
+            break;
+          case 'moveInQueue':
+            moveInQueue(command.value.from, command.value.to);
             break;
           case 'favorite':
             if (music.nowPlayingItem) void setFavorite(songRef(music.nowPlayingItem), command.value);

@@ -229,30 +229,35 @@ struct RemoteView: View {
 
 // MARK: Up Next
 
-/// The PC's queue: the current song and what's next. Tap a song to jump to it.
+/// The PC's queue: the current song and what's next. Tap a song to jump to it; swipe to remove,
+/// or Edit to drag songs into a new order.
 struct QueueView: View {
     @Environment(RemoteClient.self) private var client
     @State private var phase: Phase<Queue> = .loading
 
     var body: some View {
         NavigationStack {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    PhaseView(phase, retry: load) { queue in
-                        LazyVStack(spacing: 0) {
-                            ForEach(queue.items, id: \.index) { item in
-                                row(item, current: item.index == queue.position)
-                                    .id(item.index)
-                            }
-                            if queue.items.isEmpty { EmptyNote("Nothing in the queue.") }
-                        }
-                        .onAppear { proxy.scrollTo(queue.position, anchor: .top) }
+            PhaseView(phase, retry: load) { queue in
+                let current = queue.items.filter { $0.index == queue.position }
+                let upcoming = queue.items.filter { $0.index > queue.position }
+                List {
+                    ForEach(current, id: \.index) { row($0, current: true) }
+                    Section {
+                        ForEach(upcoming, id: \.index) { row($0, current: false) }
+                            .onDelete { offsets in remove(offsets.map { upcoming[$0].index }) }
+                            .onMove { source, destination in move(upcoming, source, destination) }
+                    } header: {
+                        if !upcoming.isEmpty { Text("Up Next") }
                     }
+                    if queue.items.isEmpty { EmptyNote("Nothing in the queue.").listRowBackground(Color.clear) }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
             .page()
             .navigationTitle("Up Next")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar { EditButton() }
         }
         // Reloads whenever the PC says the queue changed.
         .task(id: client.state.queueRevision) { await load() }
@@ -275,12 +280,38 @@ struct QueueView: View {
                         .symbolEffect(.variableColor.iterative, isActive: client.state.playing)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 6)
-            .background(current ? Theme.surface : .clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(RowStyle())
+        .listRowBackground(current ? Theme.surface : Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+    }
+
+    /// Removes songs right away here; the PC's queue change then reloads the real list.
+    private func remove(_ indexes: [Int]) {
+        guard var queue = phase.value else { return }
+        // Highest first, so earlier removals don't shift the later indexes.
+        for index in indexes.sorted(by: >) {
+            client.removeFromQueue(index)
+            queue.items.removeAll { $0.index == index }
+            for i in queue.items.indices where queue.items[i].index > index { queue.items[i].index -= 1 }
+        }
+        phase = .loaded(queue)
+    }
+
+    /// `destination` is a gap in `upcoming` (before removal), like List's onMove.
+    private func move(_ upcoming: [Queue.Item], _ source: IndexSet, _ destination: Int) {
+        guard var queue = phase.value, let offset = source.first else { return }
+        let to = destination > offset ? destination - 1 : destination
+        guard to != offset else { return }
+        client.moveInQueue(from: upcoming[offset].index, to: upcoming[to].index)
+        var items = upcoming
+        items.move(fromOffsets: source, toOffset: destination)
+        let first = upcoming[0].index
+        for i in items.indices { items[i].index = first + i }
+        queue.items = queue.items.filter { $0.index <= queue.position } + items
+        phase = .loaded(queue)
     }
 
     private func load() async {

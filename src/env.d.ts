@@ -34,7 +34,9 @@ type AhAhhRemoteCommand =
   | { action: 'playItem'; value: { type: string; id: string; startWith: number; shuffle?: boolean } }
   | { action: 'playSongs'; value: { ids: string[]; startWith: number; shuffle?: boolean } }
   | { action: 'playNext'; value: { id: string; type: 'songs' | 'library-songs' } }
-  | { action: 'jumpTo'; value: number }
+  | { action: 'jumpTo' | 'removeFromQueue'; value: number }
+  /** `to` is the index the song ends up at. */
+  | { action: 'moveInQueue'; value: { from: number; to: number } }
   | { action: 'favorite'; value: boolean };
 
 /** Something the phone remote asked for; `path` was already checked by the main process. */

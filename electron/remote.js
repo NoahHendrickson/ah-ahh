@@ -88,7 +88,10 @@ function parseCommand(body) {
     case 'playNext':
       return isId(value?.id) && SONG_TYPES.includes(value.type) ? { action, value: { id: value.id, type: value.type } } : null;
     case 'jumpTo':
+    case 'removeFromQueue':
       return isIndex(value) ? { action, value } : null;
+    case 'moveInQueue':
+      return isIndex(value?.from) && isIndex(value?.to) ? { action, value: { from: value.from, to: value.to } } : null;
     case 'favorite':
       return typeof value === 'boolean' ? { action, value } : null;
     default:
