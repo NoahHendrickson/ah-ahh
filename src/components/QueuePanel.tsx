@@ -1,5 +1,6 @@
-import { AddToPlaylist, Check, Close, Favorite, Repeat, RepeatOne, Shuffle } from '../icons';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { AddToPlaylist, Check, Close, Favorite, Grip, Repeat, RepeatOne, Shuffle } from '../icons';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { flushSync } from 'react-dom';
 import { useLibrary } from '../library';
 import {
   addToPlaylist,
@@ -30,9 +31,8 @@ export function QueuePanel({ open }: { open: boolean }) {
   const { items, position } = useQueue();
   const start = Math.max(position + 1, 0);
   const upcoming = items.slice(start, start + MAX_UPCOMING);
-  // Dragging: the queue index being moved, and the gap (0…upcoming.length) it would drop into.
-  const [dragFrom, setDragFrom] = useState<number | null>(null);
-  const [dropSlot, setDropSlot] = useState<number | null>(null);
+  // Reordering: the lifted row and the spot it would land in, both as indexes into `upcoming`.
+  const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
 
   // Keys follow the song, not its position, so rows don't re-mount (and re-animate) when moved.
   const seen = new Map<string, number>();
@@ -42,16 +42,66 @@ export function QueuePanel({ open }: { open: boolean }) {
     return `${entry.id}:${n}`;
   });
 
-  const endDrag = () => {
-    setDragFrom(null);
-    setDropSlot(null);
-  };
-  const drop = () => {
-    if (dragFrom !== null && dropSlot !== null) {
-      const to = start + dropSlot;
-      moveInQueue(dragFrom, dragFrom < to ? to - 1 : to);
-    }
-    endDrag();
+  /**
+   * Press and move a row to lift it: it follows the pointer while the rows it passes slide out of
+   * the way, and the panel scrolls when held near its top or bottom edge. Release to drop it there.
+   */
+  const startDrag = (e: ReactPointerEvent<HTMLDivElement>, from: number) => {
+    if (e.button !== 0 || (e.target as Element).closest('button')) return;
+    const row = e.currentTarget;
+    const scroller = row.closest<HTMLElement>('.queue-inner')!;
+    const height = row.offsetHeight;
+    const pointer = e.pointerId;
+    const startY = e.clientY + scroller.scrollTop;
+    let y = e.clientY;
+    let dy = 0;
+    let to = from;
+    let frame = 0;
+
+    // Runs every frame once lifted, so edge scrolling continues while the pointer holds still.
+    const tick = () => {
+      const box = scroller.getBoundingClientRect();
+      scroller.scrollTop += y < box.top + 48 ? -8 : y > box.bottom - 48 ? 8 : 0;
+      dy = y + scroller.scrollTop - startY;
+      row.style.setProperty('--dy', `${dy}px`);
+      const next = Math.min(Math.max(from + Math.round(dy / height), 0), upcoming.length - 1);
+      if (next !== to) setDrag({ from, to: (to = next) });
+      frame = requestAnimationFrame(tick);
+    };
+    const move = (ev: PointerEvent) => {
+      y = ev.clientY;
+      if (frame || Math.abs(y - e.clientY) < 4) return;
+      row.setPointerCapture(pointer);
+      setDrag({ from, to });
+      tick();
+    };
+    const end = () => {
+      row.removeEventListener('pointermove', move);
+      row.removeEventListener('pointerup', end);
+      row.removeEventListener('pointercancel', end);
+      if (!frame) return;
+      cancelAnimationFrame(frame);
+      // Commit the move with transitions off so the other rows don't slide twice, then ease
+      // the dropped row from where it was let go into its new place.
+      const { boxShadow, backgroundColor } = getComputedStyle(row);
+      scroller.classList.add('settling');
+      flushSync(() => {
+        moveInQueue(start + from, start + to);
+        setDrag(null);
+      });
+      // Rows React moved in the DOM would replay their entrance animation.
+      for (const r of row.parentElement!.children) for (const a of r.getAnimations()) if (a instanceof CSSAnimation) a.finish();
+      row.style.removeProperty('--dy');
+      void scroller.offsetHeight;
+      scroller.classList.remove('settling');
+      row.animate([{ transform: `translateY(${dy - (to - from) * height}px) scale(1.02)`, boxShadow, backgroundColor }], {
+        duration: 220,
+        easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+      });
+    };
+    row.addEventListener('pointermove', move);
+    row.addEventListener('pointerup', end);
+    row.addEventListener('pointercancel', end);
   };
 
   return (
@@ -61,7 +111,7 @@ export function QueuePanel({ open }: { open: boolean }) {
         {item ? <NowPlayingCard key={item.id} item={item} playing={isPlaying} /> : <p className="muted">Nothing playing</p>}
         <h3 className="up-next">Up Next</h3>
         {upcoming.length === 0 && <p className="muted">Your queue is empty.</p>}
-        <div className="queue-list">
+        <div className={`queue-list ${drag ? 'reordering' : ''}`}>
           {upcoming.map((entry, i) => (
             <QueueRow
               key={keys[i]}
@@ -69,14 +119,11 @@ export function QueuePanel({ open }: { open: boolean }) {
               artist={itemArtist(entry)}
               art={itemArtwork(entry, 72)}
               order={i}
-              dragging={dragFrom === start + i}
-              dropMark={dropSlot === i ? 'before' : dropSlot === upcoming.length && i === upcoming.length - 1 ? 'after' : undefined}
+              lifted={drag?.from === i}
+              shift={drag && i !== drag.from ? (i > drag.from && i <= drag.to ? -1 : i < drag.from && i >= drag.to ? 1 : 0) : 0}
               onClick={() => void mk().changeToMediaAtIndex(start + i)}
               onRemove={() => removeFromQueue(start + i)}
-              onDragStart={() => setDragFrom(start + i)}
-              onDragOver={(after) => dragFrom !== null && setDropSlot(i + (after ? 1 : 0))}
-              onDrop={drop}
-              onDragEnd={endDrag}
+              onPointerDown={(e) => startDrag(e, i)}
             />
           ))}
         </div>
@@ -237,39 +284,22 @@ interface RowProps {
   art?: string;
   /** Position in the list, for the staggered entrance. */
   order?: number;
-  dragging: boolean;
-  /** Where the dragged row would land, drawn as a line. */
-  dropMark?: 'before' | 'after';
+  /** Being dragged: follows the pointer (by --dy) above the other rows. */
+  lifted: boolean;
+  /** Slid a row up (-1) or down (1) to make room for the dragged row. */
+  shift: number;
   onClick(): void;
   onRemove(): void;
-  onDragStart(): void;
-  /** `after`: the pointer is over the lower half of this row. */
-  onDragOver(after: boolean): void;
-  onDrop(): void;
-  onDragEnd(): void;
+  onPointerDown(e: ReactPointerEvent<HTMLDivElement>): void;
 }
 
-function QueueRow({ title, artist, art, order = 0, dragging, dropMark, onClick, onRemove, onDragStart, onDragOver, onDrop, onDragEnd }: RowProps) {
+function QueueRow({ title, artist, art, order = 0, lifted, shift, onClick, onRemove, onPointerDown }: RowProps) {
   return (
     <div
-      className={`queue-row ${dragging ? 'dragging' : ''} ${dropMark ? `drop-${dropMark}` : ''}`}
-      style={{ '--i': order } as CSSProperties}
-      draggable
+      className={`queue-row ${lifted ? 'lifted' : ''}`}
+      style={{ '--i': order, '--shift': shift } as CSSProperties}
       onDoubleClick={onClick}
-      onDragStart={(e) => {
-        e.dataTransfer.effectAllowed = 'move';
-        onDragStart();
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        const rect = e.currentTarget.getBoundingClientRect();
-        onDragOver(e.clientY > rect.top + rect.height / 2);
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        onDrop();
-      }}
-      onDragEnd={onDragEnd}
+      onPointerDown={onPointerDown}
       title="Double-click to play, drag to reorder"
     >
       <div className="artwork" style={{ width: 36, height: 36 }}>
@@ -287,6 +317,9 @@ function QueueRow({ title, artist, art, order = 0, dragging, dropMark, onClick, 
       >
         <Close />
       </button>
+      <span className="queue-grip" aria-hidden>
+        <Grip />
+      </span>
     </div>
   );
 }
