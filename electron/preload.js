@@ -7,6 +7,7 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
     // Read synchronously so the renderer can apply glass before its first paint.
     prefs: ipcRenderer.sendSync('prefs:get-sync'),
     getDeveloperToken: () => ipcRenderer.invoke('musickit:token'),
+    getKeyStatus: () => ipcRenderer.invoke('musickit:status'),
     saveCredentials: (creds) => ipcRenderer.invoke('musickit:save', creds),
     resetCredentials: () => ipcRenderer.invoke('musickit:reset'),
     getInfo: () => ipcRenderer.invoke('app:info'),

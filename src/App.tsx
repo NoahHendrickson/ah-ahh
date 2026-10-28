@@ -5,7 +5,7 @@ import { QueuePanel } from './components/QueuePanel';
 import { ErrorScreen, LoadingScreen, SetupScreen, SignInScreen } from './components/Screens';
 import { Sidebar } from './components/Sidebar';
 import { LibraryProvider } from './library';
-import { initMusicKit, mk, PLAY_STARTED, preloadMusicKit } from './musickit';
+import { initMusicKit, mk, OWN_KEY_SETUP, PLAY_STARTED, preloadMusicKit } from './musickit';
 import { NavigationProvider, useNav } from './navigation';
 import { PlayerProvider } from './player';
 import { ArtistView } from './views/Artist';
@@ -15,7 +15,7 @@ import { AlbumsView, PlaylistsView, SongsView } from './views/Library';
 import { SearchView } from './views/Search';
 import { SettingsView } from './views/Settings';
 
-type Phase = { name: 'loading' } | { name: 'setup' } | { name: 'signin' } | { name: 'ready' } | { name: 'error'; error: unknown };
+type Phase = { name: 'loading' } | { name: 'setup'; expired?: boolean; cancelable?: boolean } | { name: 'signin' } | { name: 'ready' } | { name: 'error'; error: unknown };
 
 export function App() {
   const [phase, setPhase] = useState<Phase>({ name: 'loading' });
@@ -32,9 +32,14 @@ export function App() {
     (async () => {
       // Download MusicKit while the token is fetched; initMusicKit reports any load error.
       preloadMusicKit().catch(() => {});
+      // Settings → "Use your own MusicKit key" reloads into setup.
+      if (sessionStorage.getItem(OWN_KEY_SETUP)) return setPhase({ name: 'setup', cancelable: true });
       const token = await window.ahahh!.getDeveloperToken();
       if (cancelled) return;
-      if (!token) return setPhase({ name: 'setup' });
+      if (!token) {
+        const { builtIn } = await window.ahahh!.getKeyStatus();
+        return !cancelled && setPhase({ name: 'setup', expired: builtIn === 'expired' });
+      }
       const music = await initMusicKit(token);
       if (cancelled) return;
       music.addEventListener('authorizationStatusDidChange', onAuthChange);
@@ -52,6 +57,7 @@ export function App() {
   }, [attempt]);
 
   const retry = () => {
+    sessionStorage.removeItem(OWN_KEY_SETUP);
     setPhase({ name: 'loading' });
     setAttempt((n) => n + 1);
   };
@@ -65,7 +71,7 @@ export function App() {
     case 'loading':
       return <LoadingScreen label="Connecting to Apple Music…" />;
     case 'setup':
-      return <SetupScreen onSaved={retry} />;
+      return <SetupScreen onSaved={retry} onCancel={phase.cancelable ? retry : undefined} expired={phase.expired} />;
     case 'error':
       return <ErrorScreen error={phase.error} onRetry={retry} onReplaceKey={window.ahahh ? replaceKey : undefined} />;
     case 'signin':

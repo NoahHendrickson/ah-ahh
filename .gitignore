@@ -3,3 +3,4 @@ dist/
 release/
 *.p8
 .DS_Store
+electron/token.json

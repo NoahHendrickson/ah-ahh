@@ -69,8 +69,12 @@ export function SignInScreen() {
   );
 }
 
-/** First-run: collect the MusicKit key from the Apple Developer portal. Stored locally by the main process. */
-export function SetupScreen({ onSaved }: { onSaved(token: string): void }) {
+/**
+ * Collects your own MusicKit key from the Apple Developer portal (stored locally by the main process).
+ * Release builds ship with a built-in key, so this only shows when you ask for it, when that key has
+ * expired, or in builds without one.
+ */
+export function SetupScreen({ onSaved, onCancel, expired }: { onSaved(token: string): void; onCancel?(): void; expired?: boolean }) {
   const [teamId, setTeamId] = useState('');
   const [keyId, setKeyId] = useState('');
   const [privateKey, setPrivateKey] = useState('');
@@ -98,6 +102,15 @@ export function SetupScreen({ onSaved }: { onSaved(token: string): void }) {
 
   return (
     <Centered>
+      {expired && (
+        <p className="error-text">
+          This copy of ah ahh is too old to connect to Apple Music. Restart it to finish updating, or{' '}
+          <a href="https://github.com/NoahHendrickson/ah-ahh/releases/latest" target="_blank" rel="noreferrer">
+            download the latest version
+          </a>
+          . You can also use your own MusicKit key:
+        </p>
+      )}
       <h2 className="setup-title">
         <Key /> Connect your MusicKit key
       </h2>
@@ -142,6 +155,11 @@ export function SetupScreen({ onSaved }: { onSaved(token: string): void }) {
         <button className="btn primary wide" type="submit" disabled={!teamId || !keyId || !privateKey}>
           Save and continue
         </button>
+        {onCancel && (
+          <button className="btn ghost wide" type="button" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
         <p className="muted small">The key is stored only on this computer and is used to talk to Apple Music.</p>
       </form>
     </Centered>

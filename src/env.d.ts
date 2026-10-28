@@ -39,6 +39,8 @@ interface AhAhhBridge {
   /** Prefs as they were when the page loaded (read synchronously by the preload). */
   prefs?: AhAhhPrefs;
   getDeveloperToken(): Promise<string | null>;
+  /** Whether you saved your own MusicKit key, and the state of the token release builds ship with. */
+  getKeyStatus(): Promise<{ ownKey: boolean; builtIn: 'valid' | 'expired' | 'none' }>;
   saveCredentials(creds: { teamId: string; keyId: string; privateKey: string }): Promise<string>;
   resetCredentials(): Promise<void>;
   getInfo(): Promise<AhAhhInfo>;

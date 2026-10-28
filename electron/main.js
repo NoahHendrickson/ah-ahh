@@ -112,6 +112,7 @@ function createWindow() {
 }
 
 ipcMain.handle('musickit:token', () => credentials.developerToken());
+ipcMain.handle('musickit:status', () => credentials.status());
 ipcMain.handle('musickit:save', (_event, creds) => credentials.save(creds));
 ipcMain.handle('musickit:reset', () => credentials.clear());
 ipcMain.handle('app:info', () => ({

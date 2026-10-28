@@ -14,19 +14,31 @@ media flyout, and a live **"Now Playing" overlay for OBS**.
 
 ---
 
-## 1. One-time Apple setup (needs the Apple Developer Program, $99/yr)
+## Install
 
-1. **Media ID**: [Identifiers](https://developer.apple.com/account/resources/identifiers/list/mediaId)
-   → **+** → *Media IDs* → any description, identifier like `media.dev.yourname.ahahh`.
-2. **Key**: [Keys](https://developer.apple.com/account/resources/authkeys/list) → **+** →
-   tick **Media Services (MusicKit, ShazamKit, Apple Music Feed)** → *Configure* → pick your
-   Media ID → *Continue / Register* → **Download** the `AuthKey_XXXXXXXXXX.p8` file.
-   You can only download it once, so keep it safe.
-3. Note your **Team ID** from the [Membership page](https://developer.apple.com/account#MembershipDetailsCard).
+Download the installer from [Releases](https://github.com/NoahHendrickson/ah-ahh/releases/latest),
+run it, and sign in with the Apple ID that has your Apple Music subscription. That's it: release
+builds include a MusicKit developer token, so you don't need an Apple Developer account.
 
-The first time ah ahh starts, it asks for the Team ID, Key ID, and `.p8` file. It stores
-them in the app's data folder (`%APPDATA%\ah ahh\musickit.json`) and signs a fresh
-developer token on every launch. The key never leaves your PC.
+---
+
+## 1. MusicKit key (for building)
+
+Apple Music needs a developer token signed with a MusicKit key from the Apple Developer Program
+($99/yr). Make one: a **Media ID** under
+[Identifiers](https://developer.apple.com/account/resources/identifiers/list/mediaId), then a key
+under [Keys](https://developer.apple.com/account/resources/authkeys/list) with **Media Services**
+enabled and configured for that Media ID. **Download** the `AuthKey_XXXXXXXXXX.p8` file (once only).
+
+- **Release builds** sign a token with the key at `~/.ahahh/AuthKey_<KEY ID>.p8` and bundle it
+  (`scripts/make-token.js`). The token is locked to the app's origin (`http://127.0.0.1:10770`)
+  and expires after 90 days, so release at least that often; installed copies update
+  themselves. The `.p8` itself never ships. Use a key dedicated to public builds: if it's ever
+  abused, revoke it in the portal, make a new one, and release.
+- **Your own key:** without a built-in token (dev builds, `SKIP_TOKEN=1`), or via **Settings →
+  Use your own MusicKit key**, ah ahh asks for your Team ID, Key ID, and `.p8`. They're stored only
+  in the app's data folder (`%APPDATA%\ah ahh\musickit.json`) and take priority over the built-in
+  token.
 
 ## 2. One-time castlabs setup (free, needed for playback)
 

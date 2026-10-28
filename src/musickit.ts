@@ -97,6 +97,9 @@ declare global {
   }
 }
 
+/** sessionStorage flag: Settings → "Use your own MusicKit key" reloads the app into the key setup screen. */
+export const OWN_KEY_SETUP = 'ahahh.ownKeySetup';
+
 const SCRIPT_URL = 'https://js-cdn.music.apple.com/musickit/v3/musickit.js';
 
 export const PlaybackStates = { playing: 2, paused: 3, stopped: 4, ended: 5, loading: 1, waiting: 8, stalled: 9 } as const;

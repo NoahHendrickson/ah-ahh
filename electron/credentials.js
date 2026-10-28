@@ -25,9 +25,28 @@ function sign({ teamId, keyId, privateKey }) {
   return `${input}.${signature.toString('base64url')}`;
 }
 
+/** The token release builds ship with (see scripts/make-token.js), if there is one. */
+function builtIn() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, 'token.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+const builtInValid = (t) => t && t.expiresAt * 1000 > Date.now() + 60_000;
+
+/** Your own key if you saved one, otherwise the built-in token. */
 function developerToken() {
   const creds = load();
-  return creds ? sign(creds) : null;
+  if (creds) return sign(creds);
+  const t = builtIn();
+  return builtInValid(t) ? t.token : null;
+}
+
+function status() {
+  const t = builtIn();
+  return { ownKey: !!load(), builtIn: !t ? 'none' : builtInValid(t) ? 'valid' : 'expired' };
 }
 
 function save(input) {
@@ -58,4 +77,4 @@ function clear() {
   fs.rmSync(file(), { force: true });
 }
 
-module.exports = { developerToken, save, clear };
+module.exports = { developerToken, status, save, clear };
