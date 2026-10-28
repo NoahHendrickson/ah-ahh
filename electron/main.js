@@ -1,8 +1,11 @@
 const { app, BrowserWindow, components, dialog, ipcMain, nativeTheme, shell } = require('electron');
+const os = require('node:os');
 const path = require('node:path');
+const QRCode = require('qrcode');
 const { autoUpdater } = require('electron-updater');
 const credentials = require('./credentials');
 const prefs = require('./prefs');
+const { readToken, resetToken, startRemote } = require('./remote');
 const { startServer } = require('./server');
 
 // Fixed port: MusicKit keeps your sign-in in storage scoped to the page origin,
@@ -10,6 +13,8 @@ const { startServer } = require('./server');
 const PORT = 10770;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const DEV_URL = process.env.AHAHH_DEV_URL;
+// The phone remote gets its own server on the LAN, so the app's server above stays local-only.
+const REMOTE_PORT = 10771;
 
 // Apple's sign-in pages are picky about unfamiliar browsers; present as plain Chrome.
 // Electron adds "<app name without spaces>/<version>" to the user agent.
@@ -26,6 +31,9 @@ const SIGN_IN_HOSTS = new Set(['authorize.music.apple.com', 'idmsa.apple.com', '
 
 let win = null;
 let server = null;
+let remote = null;
+let remoteError = null;
+let nowPlaying = { playing: false, title: null };
 
 function hostOf(url) {
   try {
@@ -123,7 +131,70 @@ ipcMain.handle('prefs:set', (_event, patch) => {
   if (win && prefs.glassSupported() && next.glass !== before) applyGlass(win, next.glass);
   return { ...next, glassSupported: prefs.glassSupported() };
 });
-ipcMain.on('nowplaying', (_event, state) => server?.publish(state));
+ipcMain.on('nowplaying', (_event, state) => {
+  nowPlaying = state;
+  server?.publish(state);
+  remote?.publish(state);
+});
+
+// Phone remote. Starts/stops are chained so quick toggles can't overlap.
+const tokenFile = () => path.join(app.getPath('userData'), 'remote.json');
+let remoteToken = null;
+let remoteTask = Promise.resolve();
+function setRemote(enabled) {
+  remoteTask = remoteTask.then(async () => {
+    await remote?.close();
+    remote = null;
+    remoteError = null;
+    if (!enabled) return;
+    try {
+      remote = await startRemote({
+        port: REMOTE_PORT,
+        token: (remoteToken ??= readToken(tokenFile())),
+        info: { name: os.hostname(), version: app.getVersion() },
+        state: nowPlaying,
+        command: (cmd) => {
+          if (!win) return false;
+          win.webContents.send('remote:command', cmd);
+          return true;
+        },
+      });
+    } catch (err) {
+      remoteError =
+        err.code === 'EADDRINUSE' ? `Port ${REMOTE_PORT} is already in use by another program.` : `Couldn’t start (${err.code || err.message}).`;
+    }
+  });
+  return remoteTask;
+}
+
+/** This PC's LAN addresses, for the phone to try in turn. */
+function lanHosts() {
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter((a) => a.family === 'IPv4' && !a.internal && !a.address.startsWith('169.254.'))
+    .map((a) => a.address);
+}
+
+async function remotePairing() {
+  await remoteTask;
+  const enabled = prefs.get().remote;
+  if (!remote) return { enabled, error: remoteError };
+  const hosts = lanHosts();
+  const url = `ahahh://pair?hosts=${hosts.join(',')}&port=${REMOTE_PORT}&token=${remoteToken}&name=${encodeURIComponent(os.hostname())}`;
+  return { enabled, url, qr: await QRCode.toDataURL(url, { margin: 2, width: 360 }), hosts, port: REMOTE_PORT, error: null };
+}
+
+ipcMain.handle('remote:pairing', remotePairing);
+ipcMain.handle('remote:set-enabled', (_event, enabled) => {
+  setRemote(prefs.set({ remote: enabled === true }).remote);
+  return remotePairing();
+});
+ipcMain.handle('remote:reset', () => {
+  remoteToken = resetToken(tokenFile());
+  // Restarting with the new token also drops every phone connected with the old one.
+  if (prefs.get().remote) setRemote(true);
+  return remotePairing();
+});
 
 // Updates come from GitHub Releases: downloaded in the background, installed on quit
 // (or right away via "Restart to update" in Settings).
@@ -176,6 +247,7 @@ app.whenReady().then(async () => {
     return;
   }
 
+  if (prefs.get().remote) setRemote(true);
   createWindow();
   checkForUpdates();
   setInterval(checkForUpdates, 6 * 60 * 60 * 1000);

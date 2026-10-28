@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { mk, nowPlayingIds, type MediaItem, type MusicKitInstance } from './musickit';
+import { mk, nowPlayingIds, ShuffleMode, type MediaItem, type MusicKitInstance } from './musickit';
 
 /** Player bar state. Track rows, the queue and volume have their own hooks below so they don't re-render on every event. */
 export interface PlayerState {
@@ -70,6 +70,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   useNowPlayingBroadcast(state);
   useMediaSession(state);
+  useRemoteCommands();
 
   return <PlayerContext.Provider value={state}>{children}</PlayerContext.Provider>;
 }
@@ -183,13 +184,14 @@ export function useSmoothPlaybackTime(isPlaying: boolean): number {
   return anchor.current.time + Math.min((performance.now() - anchor.current.at) / 1000, 1);
 }
 
-/** Pushes now-playing info to the main process, which relays it to the OBS overlay. */
+/** Pushes now-playing info to the main process, which relays it to the OBS overlay and the phone remote. */
 function useNowPlayingBroadcast(state: PlayerState) {
-  const { item, isPlaying, duration } = state;
+  const { item, isPlaying, duration, shuffle, repeat } = state;
 
   useEffect(() => {
     const music = mk();
     let last = { positionMs: 0, updatedAt: 0, playing: false };
+    let volumeTimer: ReturnType<typeof setTimeout> | undefined;
 
     const publish = () => {
       const positionMs = (music.currentPlaybackTime || 0) * 1000;
@@ -199,10 +201,13 @@ function useNowPlayingBroadcast(state: PlayerState) {
         title: item ? itemTitle(item) : null,
         artist: itemArtist(item),
         album: itemAlbum(item),
-        artwork: itemArtwork(item, 300) ?? null,
+        artwork: itemArtwork(item, 600) ?? null,
         durationMs: duration * 1000,
         positionMs,
         updatedAt: last.updatedAt,
+        volume: music.volume,
+        shuffle,
+        repeat,
       });
     };
 
@@ -211,15 +216,66 @@ function useNowPlayingBroadcast(state: PlayerState) {
       const predicted = last.positionMs + (last.playing ? Date.now() - last.updatedAt : 0);
       if (Math.abs(predicted - (music.currentPlaybackTime || 0) * 1000) > 1500) publish();
     };
+    // Dragging the volume slider fires many events; send at most one per 100ms.
+    const onVolume = () => {
+      volumeTimer ??= setTimeout(() => {
+        volumeTimer = undefined;
+        publish();
+      }, 100);
+    };
 
     publish();
     const timer = setInterval(publish, 10_000);
     music.addEventListener('playbackTimeDidChange', onTime);
+    music.addEventListener('playbackVolumeDidChange', onVolume);
     return () => {
       clearInterval(timer);
+      clearTimeout(volumeTimer);
       music.removeEventListener('playbackTimeDidChange', onTime);
+      music.removeEventListener('playbackVolumeDidChange', onVolume);
     };
-  }, [item, isPlaying, duration]);
+  }, [item, isPlaying, duration, shuffle, repeat]);
+}
+
+/** Runs commands from the phone remote, relayed by the main process. */
+function useRemoteCommands() {
+  useEffect(
+    () =>
+      window.ahahh?.onRemoteCommand((command) => {
+        const music = mk();
+        switch (command.action) {
+          case 'play':
+            void music.play();
+            break;
+          case 'pause':
+            music.pause();
+            break;
+          case 'toggle':
+            if (music.isPlaying) music.pause();
+            else void music.play();
+            break;
+          case 'next':
+            void music.skipToNextItem();
+            break;
+          case 'previous':
+            void music.skipToPreviousItem();
+            break;
+          case 'seek':
+            void music.seekToTime(command.value);
+            break;
+          case 'volume':
+            music.volume = command.value;
+            break;
+          case 'shuffle':
+            music.shuffleMode = command.value ? ShuffleMode.songs : ShuffleMode.off;
+            break;
+          case 'repeat':
+            music.repeatMode = command.value;
+            break;
+        }
+      }),
+    [],
+  );
 }
 
 /** Feeds the OS media overlay (Windows media flyout, keyboard media keys). */

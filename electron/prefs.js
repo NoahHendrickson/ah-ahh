@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const DEFAULTS = { glass: true, glassTint: 0.55 };
+const DEFAULTS = { glass: true, glassTint: 0.55, remote: false };
 
 const file = () => path.join(app.getPath('userData'), 'prefs.json');
 
@@ -24,6 +24,7 @@ function set(patch) {
   const next = { ...get() };
   if (typeof patch?.glass === 'boolean') next.glass = patch.glass;
   if (Number.isFinite(patch?.glassTint)) next.glassTint = Math.min(0.95, Math.max(0.15, patch.glassTint));
+  if (typeof patch?.remote === 'boolean') next.remote = patch.remote;
   cache = next;
   fs.mkdirSync(path.dirname(file()), { recursive: true });
   fs.writeFileSync(file(), JSON.stringify(next));

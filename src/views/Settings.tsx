@@ -85,6 +85,59 @@ function AppearancePanel() {
   );
 }
 
+function RemotePanel() {
+  const [pairing, setPairing] = useState<AhAhhRemotePairing | null>(null);
+
+  useEffect(() => {
+    void window.ahahh!.getRemotePairing().then(setPairing);
+  }, []);
+
+  if (!pairing) return null;
+
+  const resetPairing = async () => {
+    if (!confirm('Unpair all phones? You will need to scan the new code.')) return;
+    setPairing(await window.ahahh!.resetRemotePairing());
+  };
+
+  return (
+    <section className="panel">
+      <h2>Phone remote</h2>
+      <div className="switch-row">
+        <div>
+          <div>Control from your phone</div>
+          <p className="muted small">Play, pause, skip and change volume from the ah ahh iPhone app on the same Wi-Fi.</p>
+        </div>
+        <button
+          className={`switch ${pairing.enabled ? 'on' : ''}`}
+          role="switch"
+          aria-checked={pairing.enabled}
+          aria-label="Phone remote"
+          onClick={() => {
+            setPairing({ ...pairing, enabled: !pairing.enabled });
+            void window.ahahh!.setRemoteEnabled(!pairing.enabled).then(setPairing);
+          }}
+        />
+      </div>
+      {pairing.enabled && pairing.error && <p className="muted small">{pairing.error}</p>}
+      {pairing.enabled && pairing.qr && (
+        <>
+          <img className="remote-qr" src={pairing.qr} alt="Pairing code" />
+          <p className="muted">Scan this with the ah ahh app on your phone.</p>
+          <p className="muted small">
+            {pairing.hosts?.length ? pairing.hosts.map((host) => `${host}:${pairing.port}`).join(', ') : 'Not connected to a network'}
+          </p>
+          <p className="muted small">Windows will ask to allow ah ahh on private networks — click Allow.</p>
+          <div className="actions">
+            <button className="btn" onClick={resetPairing}>
+              Reset pairing
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 const UPDATE_LABELS: Record<AhAhhUpdateStatus, string> = {
   idle: '',
   latest: 'Up to date',
@@ -148,6 +201,8 @@ export function SettingsView() {
         <p className="muted">For chat bots (e.g. a !song command): “Song — Artist”.</p>
         {info && <CopyField value={info.nowPlayingTextUrl} />}
       </section>
+
+      <RemotePanel />
 
       <section className="panel">
         <h2>Account</h2>

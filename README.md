@@ -94,6 +94,17 @@ While ah ahh is open it serves a local overlay:
 
 These URLs are also in **Settings** inside the app.
 
+## Phone remote
+
+Control playback (play/pause, skip, seek, volume, shuffle, repeat) from the ah ahh iPhone
+app on the same Wi-Fi. It's off by default: turn on **Settings → Phone remote** and scan
+the QR code with the phone app. The first time, Windows Firewall asks about ah ahh: allow
+it on **private** networks.
+
+While it's on, ah ahh listens on port `10771` on your local network (the app's own server
+on `10770` stays local-only). Every request needs the pairing token from the QR code;
+**Reset pairing** makes a new one and disconnects every paired phone.
+
 ## How it fits together
 
 ```
@@ -101,6 +112,7 @@ electron/main.js         window, Widevine startup, Apple sign-in popup, IPC
 electron/credentials.js  stores your MusicKit key, signs ES256 developer tokens
 electron/server.js       127.0.0.1:10770, serves the UI, overlay, and now-playing feeds
 electron/overlay.html    the OBS overlay (self-contained)
+electron/remote.js       LAN server for the phone remote (port 10771, only while enabled)
 src/musickit.ts          MusicKit JS loader, API helpers, playback helpers
 src/player.tsx           player state, media keys / SMTC, now-playing broadcast
 src/views/*              Home, Search, Songs, Albums, Playlists, Album/Playlist, Artist, Settings
@@ -119,3 +131,16 @@ a real web origin. The port is fixed because Apple Music keeps your sign-in per 
 - **Running from a terminal inside VS Code or another Electron app:** if `npm start`
   crashes with `Cannot read properties of undefined (reading 'userAgentFallback')`, that
   terminal set `ELECTRON_RUN_AS_NODE=1`. Run `unset ELECTRON_RUN_AS_NODE` first.
+
+## iPhone remote
+
+The phone app lives in `ios/` (SwiftUI, no dependencies, iOS 17+). To install it on your iPhone:
+
+1. Open `ios/AhAhhRemote.xcodeproj` in Xcode. If Xcode offers to install extra components, let it.
+2. **Xcode → Settings → Accounts**: sign in with the Apple ID for team `4WDT6B6JDX`.
+3. Plug in the iPhone and trust the Mac. On the phone, turn on **Settings → Privacy & Security
+   → Developer Mode** and restart when it asks.
+4. Pick the iPhone as the run destination and press **Run** (⌘R).
+5. On the PC, turn on **Settings → Phone remote**, then scan the code with the app (or the
+   Camera app). When iOS asks to find devices on your local network, tap **Allow**. If you
+   tapped Don't Allow, turn it back on in **Settings → ah ahh → Local Network**.

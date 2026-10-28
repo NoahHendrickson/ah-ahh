@@ -1069,6 +1069,14 @@ button {
   font-size: 13px;
 }
 
+.remote-qr {
+  display: block;
+  width: 180px;
+  height: 180px;
+  margin: 16px 0 10px;
+  border-radius: 10px;
+}
+
 .switch-row {
   display: flex;
   align-items: center;

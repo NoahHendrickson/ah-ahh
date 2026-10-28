@@ -14,6 +14,24 @@ interface AhAhhPrefs {
   glassSupported: boolean;
 }
 
+interface AhAhhRemotePairing {
+  enabled: boolean;
+  /** Set when the remote server couldn't start (e.g. the port is taken). */
+  error: string | null;
+  /** The rest is only there while the server is running. */
+  url?: string;
+  /** QR code of `url`, as a PNG data URL. */
+  qr?: string;
+  hosts?: string[];
+  port?: number;
+}
+
+type AhAhhRemoteCommand =
+  | { action: 'play' | 'pause' | 'toggle' | 'next' | 'previous' }
+  | { action: 'seek' | 'volume'; value: number }
+  | { action: 'shuffle'; value: boolean }
+  | { action: 'repeat'; value: 0 | 1 | 2 };
+
 type AhAhhUpdateStatus = 'idle' | 'latest' | 'downloading' | 'ready' | 'error';
 
 interface AhAhhBridge {
@@ -31,6 +49,11 @@ interface AhAhhBridge {
   /** Returns an unsubscribe function. */
   onUpdateStatus(callback: (status: AhAhhUpdateStatus) => void): () => void;
   installUpdate(): Promise<void>;
+  getRemotePairing(): Promise<AhAhhRemotePairing>;
+  setRemoteEnabled(enabled: boolean): Promise<AhAhhRemotePairing>;
+  resetRemotePairing(): Promise<AhAhhRemotePairing>;
+  /** Commands from the phone remote. Returns an unsubscribe function. */
+  onRemoteCommand(callback: (command: AhAhhRemoteCommand) => void): () => void;
 }
 
 interface Window {

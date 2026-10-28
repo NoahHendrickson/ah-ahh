@@ -20,5 +20,13 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
       return () => ipcRenderer.removeListener('update:status', listener);
     },
     installUpdate: () => ipcRenderer.invoke('update:install'),
+    getRemotePairing: () => ipcRenderer.invoke('remote:pairing'),
+    setRemoteEnabled: (enabled) => ipcRenderer.invoke('remote:set-enabled', enabled),
+    resetRemotePairing: () => ipcRenderer.invoke('remote:reset'),
+    onRemoteCommand: (callback) => {
+      const listener = (_event, command) => callback(command);
+      ipcRenderer.on('remote:command', listener);
+      return () => ipcRenderer.removeListener('remote:command', listener);
+    },
   });
 }
