@@ -1,0 +1,61 @@
+{
+  "name": "ah-ahh",
+  "productName": "ah ahh",
+  "version": "0.1.0",
+  "description": "A lightweight Apple Music player that plays nice with game capture.",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "vite build && electron .",
+    "dev": "concurrently -k -n vite,app \"vite\" \"wait-on tcp:5173 && cross-env ENCORE_DEV_URL=http://localhost:5173 electron .\"",
+    "build": "tsc --noEmit && vite build",
+    "vmp:sign-dev": "python3 -m castlabs_evs.vmp sign-pkg node_modules/electron/dist",
+    "dist:win": "npm run build && electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "dev.noey.ahahh",
+    "productName": "ah ahh",
+    "electronVersion": "44.9.3+wvcus",
+    "electronDownload": {
+      "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
+    },
+    "afterPack": "scripts/vmp-sign.js",
+    "files": [
+      "electron/**",
+      "dist/renderer/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "github:castlabs/electron-releases#v44.9.3+wvcus",
+    "electron-builder": "^26.18.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "wait-on": "^9.5.1"
+  },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.3.5",
+    "@hugeicons/react": "^1.1.10",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "allowScripts": {
+    "github:castlabs/electron-releases#2263925eabe847eed890701134e6168d71c3d0a1": true,
+    "electron-winstaller@5.4.0": true
+  }
+}

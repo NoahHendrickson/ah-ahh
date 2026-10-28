@@ -1,0 +1,1412 @@
+:root {
+  --bg: #0e0e11;
+  --bg-sidebar: #141418;
+  --surface: #1b1b21;
+  --surface-hover: #24242c;
+  --border: rgba(255, 255, 255, 0.07);
+  --ink: #0e0e11;
+  --text: #f2f2f4;
+  --text-2: rgba(255, 255, 255, 0.7);
+  --text-3: rgba(255, 255, 255, 0.45);
+  --accent: #f2f2f4;
+  --accent-hover: #ffffff;
+  --radius: 10px;
+  --titlebar: 48px;
+  --player: 88px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur: 280ms;
+  --dur-slow: 460ms;
+
+  color-scheme: dark;
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glass: the window behind is frosted by the OS (Windows acrylic / macOS vibrancy);
+   these translucent tints sit on top. --glass-tint is set from Settings. */
+:root.glass {
+  --glass-tint: 0.55;
+  /* One even tint over the whole window; panels add only a slight extra shade. */
+  --bg: rgba(14, 14, 17, var(--glass-tint));
+  --bg-sidebar: rgba(0, 0, 0, 0.14);
+  --surface: rgba(255, 255, 255, 0.07);
+  --surface-hover: rgba(255, 255, 255, 0.11);
+  --border: rgba(255, 255, 255, 0.09);
+  background: transparent;
+}
+
+.glass .app {
+  background: var(--bg);
+}
+
+.glass .topbar {
+  background: none;
+}
+
+/* Content fades out as it scrolls up under the back button, instead of a dark bar. */
+.glass .main {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 14px, black calc(var(--titlebar) + 10px));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 30px;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 19px;
+  font-weight: 650;
+}
+
+h3 {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.muted {
+  color: var(--text-2);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+
+.drag button,
+.drag input,
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* ---------- Layout ---------- */
+
+.app {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr) 0px;
+  transition: grid-template-columns var(--dur-slow) var(--ease-out);
+  grid-template-rows: minmax(0, 1fr) var(--player);
+  height: 100vh;
+}
+
+.app.with-queue {
+  grid-template-columns: 236px minmax(0, 1fr) 320px;
+}
+
+.main {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: var(--titlebar);
+}
+
+.topbar {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  position: relative;
+  z-index: 5;
+  height: var(--titlebar);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  background: linear-gradient(var(--bg) 40%, transparent);
+}
+
+.page {
+  --page-x: 32px;
+  padding: 0 var(--page-x) 48px;
+}
+
+.page > h1 {
+  margin: 4px 0 20px;
+}
+
+.section {
+  margin-top: 32px;
+}
+
+.section > h2 {
+  margin-bottom: 14px;
+}
+
+.sentinel {
+  height: 1px;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-top {
+  height: var(--titlebar);
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+}
+
+.platform-darwin .sidebar-top {
+  padding-left: 88px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.logo-mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ffffff, #8e8e96);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.25);
+}
+
+.logo.big {
+  font-size: 26px;
+  gap: 12px;
+  justify-content: center;
+}
+
+.logo.big .logo-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 10px 12px;
+}
+
+.sidebar-bottom {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.nav-heading {
+  margin: 18px 10px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-item span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nav-item:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.nav-item.active {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.nav-item.active svg {
+  color: var(--accent);
+}
+
+.nav-item.playlist {
+  padding: 6px 12px;
+}
+
+/* ---------- Icons ---------- */
+
+.icon {
+  flex: none;
+}
+
+.icon.filled path {
+  fill: currentColor;
+}
+
+/* ---------- Buttons (all fully rounded) ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.btn:hover:not(:disabled) {
+  background: #2e2e38;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn.ghost {
+  background: transparent;
+  color: var(--text-2);
+}
+
+.btn.ghost:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.btn.wide {
+  width: 100%;
+  height: 42px;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.icon-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.icon-btn.active {
+  position: relative;
+  color: var(--accent);
+}
+
+.icon-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.actions.center {
+  justify-content: center;
+}
+
+/* ---------- Artwork & cards ---------- */
+
+.artwork {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #2a2a33, #1d1d24);
+  color: var(--text-3);
+}
+
+.artwork.round {
+  border-radius: 50%;
+}
+
+.artwork img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 22px 18px;
+}
+
+.shelf {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 168px;
+  gap: 18px;
+  overflow-x: auto;
+  /* Bleed to the edges of the content area (past the page padding) so albums scroll
+     edge to edge; extra top/bottom room keeps the hover lift + shadow from being clipped. */
+  margin: -8px calc(var(--page-x) * -1) -16px;
+  padding: 8px var(--page-x) 24px;
+  scroll-padding-inline: var(--page-x);
+}
+
+.card {
+  min-width: 0;
+  cursor: pointer;
+  animation: rise-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 12) * 30ms);
+}
+
+.card-art {
+  position: relative;
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.card:hover .card-art {
+  transform: translateY(-4px);
+}
+
+.card-art .artwork {
+  transition: box-shadow var(--dur) var(--ease-out);
+}
+
+.card:hover .card-art .artwork {
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+
+.card-art .artwork {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+}
+
+.card-art .artwork.round {
+  border-radius: 50%;
+}
+
+.card-play {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 140ms, transform 140ms;
+  cursor: pointer;
+}
+
+.card:hover .card-play {
+  opacity: 1;
+  transform: none;
+}
+
+.card-title {
+  margin-top: 9px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card-subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-2);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Hero (album / playlist / artist header) ---------- */
+
+.hero {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  margin: 4px 0 28px;
+}
+
+.hero-art {
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+.hero-art.round {
+  border-radius: 50%;
+}
+
+.hero-info {
+  min-width: 0;
+}
+
+.hero-info h1 {
+  font-size: 36px;
+  line-height: 1.1;
+  margin: 4px 0 6px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.byline {
+  font-size: 16px;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.notes {
+  max-width: 640px;
+  max-height: 4.2em;
+  overflow: hidden;
+  margin: 0 0 8px;
+  color: var(--text-2);
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
+.page-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 20px;
+}
+
+.page-header-row .actions {
+  margin: 0;
+}
+
+/* ---------- Track list ---------- */
+
+.tracks {
+  display: flex;
+  flex-direction: column;
+}
+
+.track {
+  animation: rise-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 16) * 16ms);
+  transition: background-color var(--dur-fast) ease;
+  /* Artwork column = artwork width, and equal padding on all four sides. */
+  --thumb: 36px;
+  --row-pad: 6px;
+  display: grid;
+  grid-template-columns: var(--thumb) minmax(0, 3fr) minmax(0, 2fr) 72px 52px;
+  align-items: center;
+  gap: 12px;
+  height: calc(var(--thumb) + var(--row-pad) * 2);
+  /* Equal padding around the artwork; a bit more on the right so the duration isn't on the edge. */
+  padding: var(--row-pad) 16px var(--row-pad) var(--row-pad);
+  border-radius: 8px;
+}
+
+.tracks.no-album .track {
+  grid-template-columns: var(--thumb) minmax(0, 1fr) 72px 52px;
+}
+
+.track:hover {
+  background: var(--surface);
+}
+
+.track.current .track-title {
+  font-weight: 700;
+}
+
+.track.unavailable {
+  opacity: 0.4;
+}
+
+.track-lead {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: var(--thumb);
+}
+
+.track-number {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.track-thumb {
+  position: relative;
+}
+
+.track-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  display: none;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(14, 14, 17, 0.7);
+  color: #fff;
+  cursor: pointer;
+}
+
+.track:hover .track-play {
+  display: grid;
+}
+
+.thumb-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.track-main {
+  min-width: 0;
+}
+
+.track-title,
+.track-artist,
+.track-album {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.track-title {
+  font-weight: 400;
+}
+
+.track-artist,
+.track-album {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.track-artist {
+  margin-top: 2px;
+}
+
+.track-actions {
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+}
+
+.track:hover .track-actions {
+  opacity: 1;
+}
+
+.track-time {
+  text-align: right;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.explicit {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+.bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.bars i {
+  width: 3px;
+  background: var(--accent);
+  border-radius: 1px;
+  animation: bar 0.9s ease-in-out infinite;
+}
+
+.bars i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+
+.bars i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+
+@keyframes bar {
+  0%,
+  100% {
+    height: 30%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+/* ---------- Search ---------- */
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 560px;
+  height: 46px;
+  margin: 4px 0 8px;
+  padding: 0 8px 0 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.search-box:focus-within {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.search-box input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+
+/* ---------- Player bar ---------- */
+
+.player {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 600px) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+  padding: 0 20px;
+  background: var(--bg-sidebar);
+  border-top: 1px solid var(--border);
+}
+
+.player-now {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.player-now .artwork {
+  border-radius: 8px;
+}
+
+.player-meta {
+  min-width: 0;
+}
+
+.player-title,
+.player-artist {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.player-title {
+  font-weight: 600;
+}
+
+.player-artist {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.player-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.play-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 100ms;
+}
+
+.play-btn:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.play-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.seek {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.time {
+  width: 40px;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.player-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 150px;
+}
+
+.slider {
+  --pct: 0%;
+  flex: 1;
+  height: 16px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--text) var(--pct), rgba(255, 255, 255, 0.16) var(--pct));
+}
+
+.slider:hover::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, var(--accent) var(--pct), rgba(255, 255, 255, 0.16) var(--pct));
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+
+.slider:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.slider:disabled {
+  cursor: default;
+}
+
+/* ---------- Queue ---------- */
+
+.queue {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--bg-sidebar);
+  border-left: 1px solid transparent;
+  transition: border-color var(--dur) var(--ease-out);
+}
+
+.queue.open {
+  border-left-color: var(--border);
+}
+
+.queue-inner {
+  width: 320px;
+  height: 100%;
+  overflow-y: auto;
+  padding: calc(var(--titlebar) + 4px) 16px 16px;
+  opacity: 0;
+  transform: translateX(40px);
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out);
+}
+
+.queue.open .queue-inner {
+  opacity: 1;
+  transform: none;
+}
+
+/* Rows cascade in when the panel opens (and when a new queue loads). */
+.queue.open .queue-row {
+  animation: rise-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 12) * 24ms + 90ms);
+}
+
+.queue h3 {
+  margin: 8px 6px 10px;
+}
+
+.queue h3:not(:first-child) {
+  margin-top: 22px;
+}
+
+.queue-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.queue-row:hover {
+  background: var(--surface);
+}
+
+.queue-row.current .queue-title {
+  font-weight: 700;
+}
+
+.queue-meta {
+  min-width: 0;
+}
+
+.queue-title,
+.queue-artist {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.queue-title {
+  font-weight: 400;
+}
+
+.queue-artist {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* ---------- Settings ---------- */
+
+.settings .panel {
+  max-width: 680px;
+  margin-bottom: 18px;
+  padding: 22px 24px;
+  border-radius: 14px;
+  background: var(--surface);
+  user-select: text;
+}
+
+.settings .panel h2 {
+  margin-bottom: 8px;
+}
+
+.settings .panel h3 {
+  margin-top: 22px;
+}
+
+.settings .panel p {
+  line-height: 1.5;
+}
+
+.copy-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 6px 6px 6px 14px;
+  border-radius: 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.copy-field code {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 42px;
+  height: 24px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 150ms;
+}
+
+.switch.on {
+  background: var(--accent);
+}
+
+.switch.on::after {
+  background: var(--ink);
+}
+
+.switch.on::after {
+  transform: translateX(18px);
+}
+
+.switch:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tint-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.tint-row .slider {
+  max-width: 260px;
+}
+
+/* ---------- Full-screen states ---------- */
+
+.screen {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100vh;
+  padding: 24px;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.07), transparent 55%), var(--bg);
+}
+
+.screen-drag {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--titlebar);
+}
+
+.screen-card {
+  width: min(440px, 100%);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.setup-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 18px;
+}
+
+.setup-steps {
+  margin: 0;
+  padding-left: 20px;
+  text-align: left;
+  line-height: 1.55;
+  user-select: text;
+}
+
+.setup-steps li + li {
+  margin-top: 6px;
+}
+
+.setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.setup-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.setup-form input:not([type='file']) {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  text-transform: uppercase;
+  outline: 0;
+}
+
+.setup-form input:focus {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.setup-form .file-pick {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  color: var(--text-2);
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.file-pick:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.file-pick input {
+  display: none;
+}
+
+.setup-form .small {
+  text-align: center;
+}
+
+.error-text {
+  margin: 0;
+  color: #ff8a9b;
+  user-select: text;
+}
+
+/* ---------- Status ---------- */
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 36px 0;
+  color: var(--text-2);
+}
+
+.status.error {
+  color: #ff8a9b;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.14);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Windows title bar overlay (native min/max/close sit top-right) ---------- */
+
+.platform-win32 .topbar {
+  padding-right: 150px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes art-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Each page fades/slides in on navigation (wrapper is re-keyed per page in App.tsx). */
+.page-enter {
+  animation: page-in var(--dur-slow) var(--ease-out) both;
+}
+
+.hero-art {
+  animation: art-in 560ms var(--ease-out) both;
+}
+
+/* Playing song's title eases to bold (variable fonts interpolate weight). */
+.track-title,
+.queue-title {
+  transition: font-weight var(--dur) var(--ease-out);
+}
+
+/* Press feedback */
+.btn,
+.icon-btn,
+.play-btn,
+.nav-item,
+.queue-row {
+  transition:
+    background-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    opacity var(--dur-fast) ease,
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.icon-btn:active:not(:disabled) {
+  transform: scale(0.88);
+}
+
+.nav-item:active {
+  transform: scale(0.98);
+}
+
+.play-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.card:hover .card-play:active {
+  transform: scale(0.9);
+}
+
+/* Play/pause icon swap (re-keyed span in PlayerBar). */
+.pop {
+  display: grid;
+  place-items: center;
+  animation: pop var(--dur) var(--ease-spring) both;
+}
+
+.icon-btn.active::after {
+  animation: pop var(--dur) var(--ease-spring) both;
+}
+
+/* Player bar song change (.player-now is re-keyed per song in PlayerBar). */
+.swap {
+  animation: fade-in-up 460ms var(--ease-out) both;
+}
+
+/* Respect the OS "reduce motion" / Windows "Animation effects: off" setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}

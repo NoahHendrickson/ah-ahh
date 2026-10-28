@@ -1,0 +1,167 @@
+<!doctype html>
+<!--
+  ah ahh "Now Playing" overlay. Add to OBS as a Browser Source:
+    URL:    http://127.0.0.1:10770/overlay
+    Size:   600 x 160
+  Options (query string):
+    ?hidePaused=1   fade out while paused
+    ?noProgress=1   hide the progress bar
+    ?align=right    anchor the card to the right edge
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ah ahh — Now Playing</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: transparent;
+        overflow: hidden;
+        font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      }
+      .stage {
+        display: flex;
+        padding: 16px;
+      }
+      .stage.right {
+        justify-content: flex-end;
+      }
+      .card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        width: 520px;
+        max-width: calc(100vw - 32px);
+        padding: 14px 18px 14px 14px;
+        border-radius: 18px;
+        background: rgba(14, 14, 17, 0.82);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        color: #fff;
+        overflow: hidden;
+        transition: opacity 400ms ease, transform 400ms ease;
+      }
+      .card.hidden {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      .backdrop {
+        position: absolute;
+        inset: -40px;
+        background-size: cover;
+        background-position: center;
+        filter: blur(40px) saturate(1.4);
+        opacity: 0.35;
+        z-index: 0;
+      }
+      .art {
+        position: relative;
+        z-index: 1;
+        flex: none;
+        width: 92px;
+        height: 92px;
+        border-radius: 10px;
+        background: #26262d center / cover;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      }
+      .meta {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+        flex: 1;
+      }
+      .label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 4px;
+      }
+      .title,
+      .artist {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .title {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .artist {
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.72);
+        margin-top: 2px;
+      }
+      .progress {
+        margin-top: 10px;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.18);
+        overflow: hidden;
+      }
+      .progress > div {
+        height: 100%;
+        width: 0;
+        background: #fff;
+        border-radius: 2px;
+      }
+      .no-progress .progress {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage" id="stage">
+      <div class="card hidden" id="card">
+        <div class="backdrop" id="backdrop"></div>
+        <div class="art" id="art"></div>
+        <div class="meta">
+          <div class="label" id="label">Now Playing</div>
+          <div class="title" id="title"></div>
+          <div class="artist" id="artist"></div>
+          <div class="progress"><div id="bar"></div></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const hidePaused = params.get('hidePaused') === '1';
+      if (params.get('noProgress') === '1') document.body.classList.add('no-progress');
+      if (params.get('align') === 'right') document.getElementById('stage').classList.add('right');
+
+      const $ = (id) => document.getElementById(id);
+      let state = { playing: false };
+
+      function render() {
+        const visible = Boolean(state.title) && (state.playing || !hidePaused);
+        $('card').classList.toggle('hidden', !visible);
+        if (!state.title) return;
+        $('title').textContent = state.title;
+        $('artist').textContent = state.artist || '';
+        $('label').textContent = state.playing ? 'Now Playing' : 'Paused';
+        const art = state.artwork ? `url("${state.artwork}")` : 'none';
+        $('art').style.backgroundImage = art;
+        $('backdrop').style.backgroundImage = art;
+      }
+
+      function tick() {
+        if (state.durationMs) {
+          const elapsed = state.playing ? Date.now() - state.updatedAt : 0;
+          const position = Math.min(state.positionMs + elapsed, state.durationMs);
+          $('bar').style.width = `${(position / state.durationMs) * 100}%`;
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+
+      const events = new EventSource('/now-playing/events');
+      events.onmessage = (event) => {
+        state = JSON.parse(event.data);
+        render();
+      };
+    </script>
+  </body>
+</html>
