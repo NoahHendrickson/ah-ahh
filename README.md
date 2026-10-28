@@ -74,9 +74,9 @@ Installed copies check GitHub Releases on launch and every few hours, download n
 in the background, and install them on quit (or via **Settings → Restart to update**).
 
 ```sh
-npm version patch     # bump the version (0.1.0 → 0.1.1)
-npm run release:win   # build, sign, and publish the GitHub release (uses `gh auth token`)
+npm version patch       # bump the version (0.1.0 → 0.1.1) and tag it
 git push --follow-tags
+npm run release:win     # build, sign, and publish the GitHub release (uses `gh`)
 ```
 
 ---

@@ -10,8 +10,8 @@
     "dev": "concurrently -k -n vite,app \"vite\" \"wait-on tcp:5173 && cross-env AHAHH_DEV_URL=http://localhost:5173 electron .\"",
     "build": "tsc --noEmit && vite build",
     "vmp:sign-dev": "python3 -m castlabs_evs.vmp sign-pkg node_modules/electron/dist",
-    "dist:win": "npm run build && electron-builder --win --x64",
-    "release:win": "npm run build && GH_TOKEN=$(gh auth token) electron-builder --win --x64 --publish always"
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never",
+    "release:win": "npm run dist:win && gh release create v$npm_package_version release/ah-ahh-Setup-$npm_package_version.exe release/ah-ahh-Setup-$npm_package_version.exe.blockmap release/latest.yml --title \"ah ahh $npm_package_version\" --generate-notes"
   },
   "build": {
     "appId": "dev.noey.ahahh",
