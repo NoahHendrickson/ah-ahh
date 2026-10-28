@@ -1,19 +1,12 @@
+import { useEffect } from 'react';
+import { Avatar } from '../components/Avatar';
 import { useAsync } from '../hooks';
 import { mk, OWN_KEY_SETUP } from '../musickit';
-
-export type Profile = { name: string; photo: string | null };
-
-/** Round account picture, or the name's first letter when the computer account has none. */
-export function Avatar({ profile, size }: { profile?: Profile; size: number }) {
-  return (
-    <span className="avatar" style={{ width: size, height: size, fontSize: size * 0.45 }}>
-      {profile?.photo ? <img src={profile.photo} alt="" /> : profile?.name.charAt(0).toUpperCase()}
-    </span>
-  );
-}
+import { refreshProfile, useProfile } from '../profile';
 
 export function ProfileView() {
-  const { data: profile } = useAsync(() => window.ahahh!.getProfile(), []);
+  const profile = useProfile();
+  useEffect(refreshProfile, []);
   const { data: keyStatus } = useAsync(() => window.ahahh!.getKeyStatus(), []);
 
   const removeKey = async () => {
@@ -29,7 +22,7 @@ export function ProfileView() {
   };
 
   return (
-    <div className="page settings">
+    <div className="page">
       <div className="profile-header">
         <Avatar profile={profile} size={96} />
         <h1>{profile?.name}</h1>

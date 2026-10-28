@@ -129,16 +129,24 @@ button {
 
 /* ---------- Layout ---------- */
 
+/*
+ * --sidebar-w and --queue-w are the panels' chosen widths (Resizer.tsx). The page keeps --page-min
+ * however small the window: the queue gives way first, down to what leaves the sidebar its 180px
+ * minimum, then the sidebar. A closed queue takes no room.
+ */
 .app {
+  --page-min: 360px;
+  --queue-open: min(var(--queue-w), 100vw - var(--page-min) - 180px);
+  --queue-col: 0px;
   display: grid;
-  grid-template-columns: var(--sidebar-w) minmax(0, 1fr) 0px;
+  grid-template-columns: min(var(--sidebar-w), 100vw - var(--page-min) - var(--queue-col)) minmax(0, 1fr) var(--queue-col);
   transition: grid-template-columns var(--dur-slow) var(--ease-out);
   grid-template-rows: minmax(0, 1fr) var(--player);
   height: 100vh;
 }
 
 .app.with-queue {
-  grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--queue-w);
+  --queue-col: var(--queue-open);
 }
 
 /* Panel edges drag to resize; the column follows the pointer instead of easing after it. */
@@ -274,11 +282,6 @@ button {
 
 .sidebar-bottom .icon-btn {
   flex: none;
-}
-
-.sidebar-bottom .icon-btn.selected {
-  background: var(--surface-hover);
-  color: var(--accent);
 }
 
 .avatar {
@@ -440,6 +443,12 @@ button {
   margin-left: -2px;
   border-radius: 50%;
   background: currentColor;
+}
+
+/* The current page, for icon-only nav buttons (.icon-btn.active draws a dot instead). */
+.icon-btn.current {
+  background: var(--surface-hover);
+  color: var(--accent);
 }
 
 .icon-btn:disabled {
@@ -1009,7 +1018,7 @@ button {
 }
 
 .queue-inner {
-  width: var(--queue-w);
+  width: var(--queue-open);
   height: 100%;
   overflow-y: auto;
   padding: calc(var(--titlebar) + 4px) 16px 16px;
@@ -1252,7 +1261,7 @@ button {
   color: var(--text-2);
 }
 
-/* ---------- Settings ---------- */
+/* ---------- Profile ---------- */
 
 .profile-header {
   display: flex;
@@ -1265,7 +1274,9 @@ button {
   margin: 0;
 }
 
-.settings .panel {
+/* ---------- Settings (panels are shared with Profile) ---------- */
+
+.panel {
   max-width: 680px;
   margin-bottom: 18px;
   padding: 22px 24px;
@@ -1274,15 +1285,15 @@ button {
   user-select: text;
 }
 
-.settings .panel h2 {
+.panel h2 {
   margin-bottom: 8px;
 }
 
-.settings .panel h3 {
+.panel h3 {
   margin-top: 22px;
 }
 
-.settings .panel p {
+.panel p {
   line-height: 1.5;
 }
 

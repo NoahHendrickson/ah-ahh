@@ -263,19 +263,32 @@ function queueKey(type: string): string | null {
 /** Window event fired when the user starts playing something new (not auto-advance to the next song). */
 export const PLAY_STARTED = 'ahahh:play-started';
 
+/** Plays whose queue is still loading; while any are, shuffle is off and `shuffleAfter` holds the setting. */
+let loading = 0;
+let latest = 0;
+let shuffleAfter = false;
+
 /**
  * With shuffle on, MusicKit shuffles a new queue before applying `startWith`, so it would start on a
  * random song. Queue in order instead, then shuffle: that keeps the chosen song first.
  */
 async function startQueue(options: Record<string, unknown>, shuffle?: boolean): Promise<void> {
   const music = mk();
-  const shuffled = shuffle ?? music.shuffleMode !== ShuffleMode.off;
+  const previous = loading ? shuffleAfter : music.shuffleMode !== ShuffleMode.off;
+  const call = ++latest;
+  shuffleAfter = shuffle ?? previous;
+  loading++;
   music.shuffleMode = ShuffleMode.off;
   try {
     await music.setQueue({ ...options, startPlaying: true });
     window.dispatchEvent(new Event(PLAY_STARTED));
+  } catch (err) {
+    // Nothing new played, so keep the setting it had (unless a newer play has set it since).
+    if (call === latest) shuffleAfter = previous;
+    throw err;
   } finally {
-    if (shuffled) music.shuffleMode = ShuffleMode.songs;
+    // Only once the last overlapping play has loaded, so an earlier one can't shuffle a later queue.
+    if (--loading === 0 && shuffleAfter) music.shuffleMode = ShuffleMode.songs;
   }
 }
 

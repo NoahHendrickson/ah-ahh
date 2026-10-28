@@ -1,19 +1,26 @@
 import { Album, Home, Logo, Playlists, Search, Settings, Songs } from '../icons';
 import type { ReactNode } from 'react';
-import { useAsync } from '../hooks';
 import { useLibrary } from '../library';
 import { useNav, type Route } from '../navigation';
-import { Avatar } from '../views/Profile';
+import { useProfile } from '../profile';
+import { Avatar } from './Avatar';
 
 export function Sidebar() {
   const { route, navigate } = useNav();
   const { playlists } = useLibrary();
-  const { data: profile } = useAsync(() => window.ahahh!.getProfile(), []);
+  const profile = useProfile();
 
+  const current = (target: Route) => route.view === target.view;
   const item = (target: Route, icon: ReactNode, label: string) => (
-    <button className={`nav-item ${route.view === target.view ? 'active' : ''}`} onClick={() => navigate(target)}>
+    <button className={`nav-item ${current(target) ? 'active' : ''}`} onClick={() => navigate(target)}>
       {icon}
       <span>{label}</span>
+    </button>
+  );
+  // Same as item(), as a bare icon.
+  const iconItem = (target: Route, icon: ReactNode, title: string) => (
+    <button className={`icon-btn ${current(target) ? 'current' : ''}`} title={title} onClick={() => navigate(target)}>
+      {icon}
     </button>
   );
 
@@ -48,13 +55,7 @@ export function Sidebar() {
       </div>
       <div className="sidebar-bottom">
         {item({ view: 'profile' }, <Avatar profile={profile} size={22} />, profile?.name ?? 'Profile')}
-        <button
-          className={`icon-btn ${route.view === 'settings' ? 'selected' : ''}`}
-          title="Settings"
-          onClick={() => navigate({ view: 'settings' })}
-        >
-          <Settings />
-        </button>
+        {iconItem({ view: 'settings' }, <Settings />, 'Settings')}
       </div>
     </nav>
   );

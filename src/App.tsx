@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PlayerBar } from './components/PlayerBar';
 import { QueuePanel } from './components/QueuePanel';
+import { paneWidths, Resizer } from './components/Resizer';
 import { ErrorScreen, LoadingScreen, SetupScreen, SignInScreen } from './components/Screens';
 import { Sidebar } from './components/Sidebar';
 import { LibraryProvider } from './library';
@@ -101,7 +102,7 @@ function Shell() {
   const { pageKey } = useNav();
   const scroller = useRef<HTMLElement>(null);
   // Set once; the resizers change these on the element directly while dragging.
-  const [widths] = useState(() => ({ '--sidebar-w': `${paneWidth('sidebar')}px`, '--queue-w': `${paneWidth('queue')}px` }) as CSSProperties);
+  const [widths] = useState(paneWidths);
 
   // New page → start at the top.
   useEffect(() => {
@@ -125,61 +126,6 @@ function Shell() {
       {queueOpen && <Resizer pane="queue" />}
       <PlayerBar queueOpen={queueOpen} onToggleQueue={() => setQueueOpen((o) => !o)} />
     </div>
-  );
-}
-
-/** How wide each side panel can be dragged, saved across launches. */
-const PANES = {
-  sidebar: { min: 180, max: 320, initial: 236 },
-  queue: { min: 260, max: 440, initial: 320 },
-};
-type Pane = keyof typeof PANES;
-
-function paneWidth(pane: Pane) {
-  const { min, max, initial } = PANES[pane];
-  const saved = Number(localStorage.getItem(`ahahh.${pane}Width`) ?? initial);
-  return Number.isFinite(saved) ? Math.min(Math.max(saved, min), max) : initial;
-}
-
-/** Drag a panel's inner edge to resize it; double-click to put it back. */
-function Resizer({ pane }: { pane: Pane }) {
-  const resize = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    const handle = e.currentTarget;
-    const app = handle.parentElement!;
-    const style = getComputedStyle(app);
-    const from = parseFloat(style.getPropertyValue(`--${pane}-w`));
-    const other = parseFloat(style.getPropertyValue(pane === 'sidebar' ? '--queue-w' : '--sidebar-w'));
-    // Leave the page in the middle at least 360px.
-    const max = Math.max(Math.min(PANES[pane].max, innerWidth - other - 360), from);
-    const sign = pane === 'sidebar' ? 1 : -1;
-    let width = from;
-    handle.setPointerCapture(e.pointerId);
-    app.classList.add('resizing');
-    const move = (ev: PointerEvent) => {
-      width = Math.round(Math.min(Math.max(from + sign * (ev.clientX - e.clientX), PANES[pane].min), max));
-      app.style.setProperty(`--${pane}-w`, `${width}px`);
-    };
-    // Fires after pointerup and pointercancel alike.
-    const end = () => {
-      handle.removeEventListener('pointermove', move);
-      handle.removeEventListener('lostpointercapture', end);
-      app.classList.remove('resizing');
-      localStorage.setItem(`ahahh.${pane}Width`, String(width));
-    };
-    handle.addEventListener('pointermove', move);
-    handle.addEventListener('lostpointercapture', end);
-  };
-
-  return (
-    <div
-      className={`resizer resizer-${pane} no-drag`}
-      onPointerDown={resize}
-      onDoubleClick={(e) => {
-        localStorage.removeItem(`ahahh.${pane}Width`);
-        e.currentTarget.parentElement!.style.setProperty(`--${pane}-w`, `${PANES[pane].initial}px`);
-      }}
-    />
   );
 }
 

@@ -1,5 +1,4 @@
-const { app, BrowserWindow, components, dialog, ipcMain, nativeImage, nativeTheme, shell } = require('electron');
-const { execFile } = require('node:child_process');
+const { app, BrowserWindow, components, dialog, ipcMain, nativeTheme, shell } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -7,6 +6,7 @@ const QRCode = require('qrcode');
 const { autoUpdater } = require('electron-updater');
 const credentials = require('./credentials');
 const prefs = require('./prefs');
+const profile = require('./profile');
 const { readToken, resetToken, startRemote } = require('./remote');
 const { startServer } = require('./server');
 
@@ -125,27 +125,7 @@ ipcMain.handle('app:info', () => ({
   widevine: components.status(),
 }));
 
-/** Reads one attribute of the Mac user's account record; '' if it isn't set. */
-const readAccount = (attribute) =>
-  new Promise((resolve) =>
-    execFile('dscl', ['.', '-read', `/Users/${os.userInfo().username}`, attribute], { maxBuffer: 16 << 20 }, (err, out) =>
-      resolve(err ? '' : out.slice(out.indexOf(':') + 1).trim()),
-    ),
-  );
-
-// MusicKit doesn't expose the Apple Account's name or photo, but the Mac account picture is
-// the Apple Account photo when you're signed in to iCloud, so the profile uses that.
-let profile = null;
-ipcMain.handle('profile:get', () => {
-  profile ??= (async () => {
-    const fallback = { name: os.userInfo().username, photo: null };
-    if (process.platform !== 'darwin') return fallback;
-    const [name, jpeg] = await Promise.all([readAccount('RealName'), readAccount('JPEGPhoto')]);
-    const image = nativeImage.createFromBuffer(Buffer.from(jpeg.replace(/\s+/g, ''), 'hex'));
-    return { name: name || fallback.name, photo: image.isEmpty() ? null : image.resize({ width: 192, quality: 'best' }).toDataURL() };
-  })();
-  return profile;
-});
+ipcMain.handle('profile:get', () => profile.read());
 const currentPrefs = () => ({ ...prefs.get(), glassSupported: prefs.glassSupported() });
 ipcMain.handle('prefs:get', currentPrefs);
 ipcMain.on('prefs:get-sync', (event) => {
