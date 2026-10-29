@@ -4,7 +4,7 @@ import { Artwork } from '../components/Artwork';
 import { ErrorNote, Spinner } from '../components/Status';
 import { TrackList } from '../components/TrackList';
 import { useAllPages, useAsync } from '../hooks';
-import { addToLibrary, api, formatTotal, playContainer, storefront, type Resource } from '../musickit';
+import { addToLibrary, api, formatTotal, playContainer, playSongs, storefront, type Resource } from '../musickit';
 
 /** Apple's descriptions contain light HTML (<br>, <i>); show them as text. */
 function plainText(html?: string): string | undefined {
@@ -20,7 +20,7 @@ export function CollectionView({ item }: { item: Resource }) {
 
   // Detail and tracks load in parallel; tracks render from the first page while the rest stream in.
   const info = useAsync(() => api<{ data: Resource[] }>(base), [base]);
-  const { items: tracks, loading, error: tracksError } = useAllPages(`${base}/tracks`);
+  const { items: tracks, loading, complete, error: tracksError } = useAllPages(`${base}/tracks`);
 
   const detail = info.data?.data[0] ?? item;
   const error = info.error ?? tracksError;
@@ -30,6 +30,12 @@ export function CollectionView({ item }: { item: Resource }) {
   const byline = kind === 'albums' ? [a.artistName, a.genreNames?.[0], year].filter(Boolean).join(' · ') : a.curatorName ?? (isLibrary ? 'Your playlist' : 'Playlist');
   const notes = plainText(a.description?.standard ?? a.description?.short ?? a.editorialNotes?.short);
   const artwork = a.artwork ?? tracks.find((t) => t.attributes?.artwork)?.attributes?.artwork;
+  // Play the tracks already on screen so MusicKit doesn't fetch the whole collection again first.
+  // Until they have all arrived, or if a song repeats (playSongs keeps one copy), let MusicKit load it.
+  const play = (startWith: number, shuffle?: boolean) =>
+    void (complete && new Set(tracks.map((t) => t.id)).size === tracks.length
+      ? playSongs(tracks, startWith, shuffle, detail)
+      : playContainer(detail, startWith, shuffle));
 
   return (
     <div className="page">
@@ -46,13 +52,13 @@ export function CollectionView({ item }: { item: Resource }) {
             </div>
           )}
           <div className="actions">
-            <button className="btn primary" disabled={!tracks.length} onClick={() => void playContainer(detail, 0, false)}>
+            <button className="btn primary" disabled={!tracks.length} onClick={() => play(0, false)}>
               <Play /> Play
             </button>
             <button
               className="btn"
               disabled={!tracks.length}
-              onClick={() => void playContainer(detail, Math.floor(Math.random() * tracks.length), true)}
+              onClick={() => play(Math.floor(Math.random() * tracks.length), true)}
             >
               <Shuffle /> Shuffle
             </button>
@@ -67,7 +73,7 @@ export function CollectionView({ item }: { item: Resource }) {
         tracks={tracks}
         showArtwork={kind === 'playlists'}
         showAlbum={kind === 'playlists'}
-        onPlay={(i) => void playContainer(detail, i)}
+        onPlay={play}
       />
     </div>
   );

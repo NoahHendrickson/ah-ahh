@@ -9,7 +9,7 @@ import {
   nowPlayingIds,
   playContainer,
   playNext,
-  playSongs,
+  playSongIds,
   removeFromQueue,
   setFavorite,
   ShuffleMode,
@@ -365,13 +365,13 @@ function useRemoteCommands() {
             break;
           case 'playItem': {
             const { type, id, startWith, shuffle } = command.value;
-            if (type === 'songs' || type === 'library-songs') void playSongs([{ id, type }], 0, shuffle);
+            if (type === 'songs' || type === 'library-songs') void playSongIds([id], 0, shuffle);
             else void playContainer({ id, type }, startWith, shuffle);
             break;
           }
           case 'playSongs': {
             const { ids, startWith, shuffle } = command.value;
-            void playSongs(ids.map((id) => ({ id, type: 'songs' })), startWith, shuffle);
+            void playSongIds(ids, startWith, shuffle);
             break;
           }
           case 'playNext':
