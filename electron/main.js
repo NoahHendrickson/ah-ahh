@@ -1,4 +1,4 @@
-const { app, BrowserWindow, components, dialog, ipcMain, nativeTheme, shell } = require('electron');
+const { app, BrowserWindow, components, dialog, ipcMain, nativeTheme, session, shell } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -28,25 +28,81 @@ if (!app.requestSingleInstanceLock()) app.quit();
 // The UI is dark-only; this also makes the frosted glass material dark on both platforms.
 nativeTheme.themeSource = 'dark';
 
-/** Popups MusicKit opens for Apple ID sign-in. Everything else opens in the real browser. */
-const SIGN_IN_HOSTS = new Set(['authorize.music.apple.com', 'idmsa.apple.com', 'appleid.apple.com']);
-
 let win = null;
 let server = null;
 let remote = null;
 let remoteError = null;
 let nowPlaying = { playing: false, title: null };
 
-function hostOf(url) {
+// ---------- Web content policy ----------
+// What pages may open, navigate to and ask permission for, in one place. Installed once, when the app is ready.
+
+const APP_ORIGINS = new Set([ORIGIN, ...(DEV_URL ? [new URL(DEV_URL).origin] : [])]);
+/** The hosts MusicKit opens popups on for Apple ID sign-in. Everything else opens in the real browser. */
+const SIGN_IN_HOSTS = new Set(['authorize.music.apple.com', 'idmsa.apple.com', 'appleid.apple.com']);
+/** All a page may be granted: Widevine for playback, and the copy buttons in Settings. */
+const PERMISSIONS = new Set(['mediaKeySystem', 'clipboard-sanitized-write']);
+
+function parseUrl(url) {
   try {
-    return new URL(url).host;
+    return new URL(url);
   } catch {
     return null;
   }
 }
 
-function isAppUrl(url) {
-  return url.startsWith(ORIGIN) || (DEV_URL && url.startsWith(DEV_URL));
+/** Compared by origin, so "http://127.0.0.1:10770@evil.com/" doesn't pass. */
+const isAppUrl = (url) => APP_ORIGINS.has(parseUrl(url)?.origin);
+const isSignInUrl = (url) => {
+  const u = parseUrl(url);
+  return u?.protocol === 'https:' && SIGN_IN_HOSTS.has(u.host);
+};
+/** Once open, the sign-in popup moves between other apple.com hosts, so navigating inside it is allowed more than opening it. */
+const isAppleUrl = (url) => {
+  const u = parseUrl(url);
+  return u?.protocol === 'https:' && /(^|\.)apple\.com$/.test(u.hostname);
+};
+
+function openInBrowser(url) {
+  if (/^https?:/.test(url)) shell.openExternal(url);
+}
+
+function installWebContentPolicy() {
+  app.on('web-contents-created', (_event, contents) => {
+    contents.setWindowOpenHandler(({ url }) => {
+      if (isSignInUrl(url)) {
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: {
+            width: 520,
+            height: 720,
+            autoHideMenuBar: true,
+            backgroundColor: '#ffffff',
+            titleBarStyle: 'default',
+            titleBarOverlay: false,
+          },
+        };
+      }
+      openInBrowser(url);
+      return { action: 'deny' };
+    });
+
+    // The app window never leaves the app; any other window is a sign-in popup and stays on Apple.
+    // Server redirects don't go through will-navigate, so both are guarded. will-redirect also fires for
+    // iframes, which get no preload; blocking those would only break embeds (and open them in the browser).
+    const guard = (event, url) => {
+      if (!event.isMainFrame || (contents === win?.webContents ? isAppUrl(url) : isAppleUrl(url))) return;
+      event.preventDefault();
+      openInBrowser(url);
+    };
+    contents.on('will-navigate', guard);
+    contents.on('will-redirect', guard);
+  });
+
+  // Requests (prompts) and checks (navigator.permissions.query, sensors) are separate; both default to granted.
+  const permitted = (_contents, permission) => PERMISSIONS.has(permission);
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(permitted(contents, permission)));
+  session.defaultSession.setPermissionCheckHandler(permitted);
 }
 
 /** Turns the frosted-glass window background on/off (the page's CSS supplies the tint on top). */
@@ -83,30 +139,6 @@ function createWindow() {
       sandbox: true,
       autoplayPolicy: 'no-user-gesture-required',
     },
-  });
-
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (SIGN_IN_HOSTS.has(hostOf(url))) {
-      return {
-        action: 'allow',
-        overrideBrowserWindowOptions: {
-          width: 520,
-          height: 720,
-          autoHideMenuBar: true,
-          backgroundColor: '#ffffff',
-          titleBarStyle: 'default',
-          titleBarOverlay: false,
-        },
-      };
-    }
-    if (/^https?:/.test(url)) shell.openExternal(url);
-    return { action: 'deny' };
-  });
-
-  win.webContents.on('will-navigate', (event, url) => {
-    if (isAppUrl(url)) return;
-    event.preventDefault();
-    if (/^https?:/.test(url)) shell.openExternal(url);
   });
 
   if (canGlass && prefs.get().glass) applyGlass(win, true);
@@ -267,6 +299,7 @@ app.on('second-instance', () => {
 app.on('window-all-closed', () => app.quit());
 
 app.whenReady().then(async () => {
+  installWebContentPolicy();
   // Unpackaged runs (npm start) would otherwise show Electron's icon in the Dock.
   app.dock?.setIcon(path.join(__dirname, 'icon.png'));
 
