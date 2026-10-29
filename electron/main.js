@@ -88,9 +88,10 @@ function installWebContentPolicy() {
     });
 
     // The app window never leaves the app; any other window is a sign-in popup and stays on Apple.
-    // Server redirects don't go through will-navigate, so both are guarded.
+    // Server redirects don't go through will-navigate, so both are guarded. will-redirect also fires for
+    // iframes, which get no preload; blocking those would only break embeds (and open them in the browser).
     const guard = (event, url) => {
-      if (contents === win?.webContents ? isAppUrl(url) : isAppleUrl(url)) return;
+      if (!event.isMainFrame || (contents === win?.webContents ? isAppUrl(url) : isAppleUrl(url))) return;
       event.preventDefault();
       openInBrowser(url);
     };
