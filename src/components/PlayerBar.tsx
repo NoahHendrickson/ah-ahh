@@ -1,7 +1,7 @@
 import { Next, Pause, Play, Previous, Queue, Repeat, RepeatOne, Shuffle, VolumeHigh, VolumeLow, VolumeMute } from '../icons';
 import { useState } from 'react';
 import { cycleRepeat, formatTime, mk, RepeatMode, toggleShuffle } from '../musickit';
-import { itemArtist, itemArtwork, itemTitle, usePlayer, useSmoothPlaybackTime, useVolume } from '../player';
+import { itemArtist, itemArtwork, itemTitle, usePlaybackTime, usePlayer, useVolume } from '../player';
 
 export function PlayerBar({ queueOpen, onToggleQueue }: { queueOpen: boolean; onToggleQueue(): void }) {
   const { item, isPlaying, shuffle, repeat } = usePlayer();
@@ -66,9 +66,11 @@ export function PlayerBar({ queueOpen, onToggleQueue }: { queueOpen: boolean; on
 }
 
 function SeekBar() {
-  const { duration, item, isPlaying } = usePlayer();
+  const { duration, item } = usePlayer();
   const [dragging, setDragging] = useState<number | null>(null);
-  const time = Math.min(useSmoothPlaybackTime(isPlaying && dragging === null), duration || Infinity);
+  // MusicKit reports the time a few times a second; that is plenty for a seek bar, and unlike a
+  // per-frame animation it doesn't keep the window redrawing while music plays.
+  const time = Math.min(usePlaybackTime(), duration || Infinity);
   const value = dragging ?? time;
   const pct = duration ? (value / duration) * 100 : 0;
 
