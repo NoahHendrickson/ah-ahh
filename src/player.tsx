@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
   errorMessage,
   FAVORITE_CHANGED,
@@ -177,29 +177,6 @@ export function usePlaybackTime(): number {
     },
     () => mk().currentPlaybackTime || 0,
   );
-}
-
-/**
- * Playback time that glides smoothly between MusicKit's time updates (a few per second),
- * so the progress bar moves continuously instead of ticking.
- */
-export function useSmoothPlaybackTime(isPlaying: boolean): number {
-  const time = usePlaybackTime();
-  const anchor = useRef({ time, at: performance.now() });
-  if (anchor.current.time !== time) anchor.current = { time, at: performance.now() };
-  const [, redraw] = useReducer((n: number) => n + 1, 0);
-
-  useEffect(() => {
-    if (!isPlaying) return;
-    let frame = requestAnimationFrame(function loop() {
-      redraw();
-      frame = requestAnimationFrame(loop);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [isPlaying]);
-
-  if (!isPlaying) return time;
-  return anchor.current.time + Math.min((performance.now() - anchor.current.at) / 1000, 1);
 }
 
 /** Counts queue changes (a burst counts once), so the phone remote knows when to refetch the queue. */
