@@ -289,6 +289,34 @@ button:disabled {
   flex: none;
 }
 
+/* White pill: just the icon, widening to show "Update" on hover. */
+.update-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-weight: 600;
+}
+
+.update-btn span {
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0;
+  transition: max-width 180ms ease, margin 180ms ease, opacity 180ms ease;
+}
+
+.update-btn:hover span {
+  max-width: 60px;
+  margin: 0 4px 0 6px;
+  opacity: 1;
+}
+
 .avatar {
   display: inline-grid;
   flex: none;

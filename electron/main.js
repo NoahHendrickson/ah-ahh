@@ -258,7 +258,8 @@ ipcMain.handle('remote:reset', () => {
 
 // Updates come from GitHub Releases: downloaded in the background, installed on quit
 // (or right away via "Restart to update" in Settings).
-let updateStatus = 'idle';
+// AHAHH_UPDATE_STATUS=ready previews the update UI in development.
+let updateStatus = (!app.isPackaged && process.env.AHAHH_UPDATE_STATUS) || 'idle';
 function setUpdateStatus(status) {
   updateStatus = status;
   win?.webContents.send('update:status', status);

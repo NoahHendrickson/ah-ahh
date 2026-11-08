@@ -1,7 +1,7 @@
 import { Check, Copy, ExternalLink } from '../icons';
 import { useEffect, useRef, useState } from 'react';
 import { applyAppearance } from '../appearance';
-import { useAsync } from '../hooks';
+import { useAsync, useUpdateStatus } from '../hooks';
 
 function CopyField({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -147,12 +147,7 @@ const UPDATE_LABELS: Record<AhAhhUpdateStatus, string> = {
 };
 
 function UpdateStatus() {
-  const [status, setStatus] = useState<AhAhhUpdateStatus>('idle');
-
-  useEffect(() => {
-    void window.ahahh!.getUpdateStatus().then(setStatus);
-    return window.ahahh!.onUpdateStatus(setStatus);
-  }, []);
+  const status = useUpdateStatus();
 
   if (status === 'idle') return null;
   return (

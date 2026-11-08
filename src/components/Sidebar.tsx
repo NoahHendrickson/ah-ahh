@@ -1,5 +1,6 @@
-import { Album, Home, Logo, Playlists, Search, Settings, Songs } from '../icons';
+import { Album, Download, Home, Logo, Playlists, Search, Settings, Songs } from '../icons';
 import type { ReactNode } from 'react';
+import { useUpdateStatus } from '../hooks';
 import { useLibrary } from '../library';
 import { useNav, type Route } from '../navigation';
 import { useProfile } from '../profile';
@@ -9,6 +10,7 @@ export function Sidebar() {
   const { route, navigate } = useNav();
   const { playlists } = useLibrary();
   const profile = useProfile();
+  const updateReady = useUpdateStatus() === 'ready';
 
   const current = (target: Route) => route.view === target.view;
   const item = (target: Route, icon: ReactNode, label: string) => (
@@ -55,6 +57,12 @@ export function Sidebar() {
       </div>
       <div className="sidebar-bottom">
         {item({ view: 'profile' }, <Avatar profile={profile} size={22} />, profile?.name ?? 'Profile')}
+        {updateReady && (
+          <button className="update-btn" title="Restart to update" onClick={() => void window.ahahh!.installUpdate()}>
+            <Download />
+            <span>Update</span>
+          </button>
+        )}
         {iconItem({ view: 'settings' }, <Settings />, 'Settings')}
       </div>
     </nav>
