@@ -36,9 +36,9 @@
         max-width: calc(100vw - 32px);
         padding: 14px 18px 14px 14px;
         border-radius: 18px;
-        background: rgba(14, 14, 17, 0.82);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-        color: #fff;
+        background: rgba(255, 255, 255, 0.7);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+        color: #111;
         overflow: hidden;
         transition: opacity 400ms ease, transform 400ms ease;
       }
@@ -48,11 +48,11 @@
       }
       .backdrop {
         position: absolute;
-        inset: -40px;
+        inset: -130px;
         background-size: cover;
         background-position: center;
-        filter: blur(40px) saturate(1.4);
-        opacity: 0.35;
+        filter: blur(100px) saturate(1.4);
+        opacity: 0.22;
         z-index: 0;
       }
       .art {
@@ -63,21 +63,13 @@
         height: 92px;
         border-radius: 10px;
         background: #26262d center / cover;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
       }
       .meta {
         position: relative;
         z-index: 1;
         min-width: 0;
         flex: 1;
-      }
-      .label {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.6);
-        margin-bottom: 4px;
       }
       .title,
       .artist {
@@ -92,20 +84,20 @@
       }
       .artist {
         font-size: 16px;
-        color: rgba(255, 255, 255, 0.72);
+        color: rgba(0, 0, 0, 0.62);
         margin-top: 2px;
       }
       .progress {
         margin-top: 10px;
         height: 4px;
         border-radius: 2px;
-        background: rgba(255, 255, 255, 0.18);
+        background: rgba(0, 0, 0, 0.12);
         overflow: hidden;
       }
       .progress > div {
         height: 100%;
         width: 0;
-        background: #fff;
+        background: #111;
         border-radius: 2px;
       }
       .no-progress .progress {
@@ -119,7 +111,6 @@
         <div class="backdrop" id="backdrop"></div>
         <div class="art" id="art"></div>
         <div class="meta">
-          <div class="label" id="label">Now Playing</div>
           <div class="title" id="title"></div>
           <div class="artist" id="artist"></div>
           <div class="progress"><div id="bar"></div></div>
@@ -141,7 +132,6 @@
         if (!state.title) return;
         $('title').textContent = state.title;
         $('artist').textContent = state.artist || '';
-        $('label').textContent = state.playing ? 'Now Playing' : 'Paused';
         const art = state.artwork ? `url("${state.artwork}")` : 'none';
         $('art').style.backgroundImage = art;
         $('backdrop').style.backgroundImage = art;

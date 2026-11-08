@@ -81,6 +81,17 @@ export function useAllPages(path: string, pageSize = 100, max = 5000) {
   return state;
 }
 
+/** The app updater's status, live (no-op in a plain browser). */
+export function useUpdateStatus() {
+  const [status, setStatus] = useState<AhAhhUpdateStatus>('idle');
+  useEffect(() => {
+    if (!window.ahahh) return;
+    void window.ahahh.getUpdateStatus().then(setStatus);
+    return window.ahahh.onUpdateStatus(setStatus);
+  }, []);
+  return status;
+}
+
 /** Calls `onVisible` whenever the returned ref's element scrolls into view. */
 export function useOnVisible(onVisible: () => void) {
   const ref = useRef<HTMLDivElement>(null);

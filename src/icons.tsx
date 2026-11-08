@@ -4,6 +4,7 @@ import {
   ArrowReloadHorizontalIcon,
   Cancel01Icon,
   Copy01Icon,
+  Download04Icon,
   DragDropVerticalIcon,
   FavouriteIcon,
   Home01Icon,
@@ -89,6 +90,7 @@ export const Copy = icon(Copy01Icon);
 export const ExternalLink = icon(LinkSquare02Icon);
 export const Upload = icon(Upload01Icon);
 export const Key = icon(Key01Icon);
+export const Download = icon(Download04Icon);
 
 // Brand mark (Figma: ah ahh / Union). Height follows the font size; colour follows the text.
 export function Logo() {
