@@ -1042,7 +1042,9 @@ button:disabled {
   width: var(--queue-open);
   height: 100%;
   overflow-y: auto;
-  padding: calc(var(--titlebar) + 4px) 16px 16px;
+  /* The 10px scrollbar (styled scrollbars always take space) plus 6px matches the 16px on the left. */
+  scrollbar-gutter: stable;
+  padding: calc(var(--titlebar) + 4px) 6px 16px 16px;
   opacity: 0;
   transform: translateX(40px);
   transition:
